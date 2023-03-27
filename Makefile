@@ -1,14 +1,12 @@
-# Heroku
-# make heroku-login
-# make heroku-push
+# make TAG=mar25 
 
-HEROKU_APP = <your app name> 
+.PHONY: help build push all
 
-heroku-push:
-	docker buildx build --platform linux/amd64 -t ${HEROKU_APP} .
-	docker tag ${HEROKU_APP} registry.heroku.com/${HEROKU_APP}/web
-	docker push registry.heroku.com/${HEROKU_APP}/web
-	heroku container:release web -a ${HEROKU_APP}
+.DEFAULT_GOAL := all
 
-heroku-login:
-	heroku container:login
+build:
+	    docker build -t jiggyai/gptg-plugin:${TAG} .
+push:
+	    docker push jiggyai/gptg-plugin:${TAG}
+
+all: build push
