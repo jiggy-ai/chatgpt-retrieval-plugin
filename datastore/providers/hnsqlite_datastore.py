@@ -45,11 +45,11 @@ class HnsqliteDataStore(DataStore):
                 # Create a vector tuple of (id, embedding, metadata)
                 # Convert the metadata object to a dict with unix timestamps for dates
                 hnsqlite_metadata = self._get_hnsqlite_metadata(chunk.metadata)
-                # Add document_id and document chunk id to the metadata dict
+                # Add document chunk id to the metadata dict in a way that is unlikely to conflict with other metadata
                 hnsqlite_metadata['hnsqlite:doc_chunk_id']  = chunk.id                
-                hnsqlite_metadata["hnsqlite:document_id"] = doc_id
                 embeddings.append(hnsqlite.Embedding(vector = chunk.embedding, 
                                                      text = chunk.text,
+                                                     doc_id = doc_id,
                                                      metadata = hnsqlite_metadata))
 
         self.collection.add_embeddings(embeddings)
@@ -86,12 +86,11 @@ class HnsqliteDataStore(DataStore):
             query_results: List[DocumentChunkWithScore] = []
             for search_response in search_responses:                                    
                 # Create a document chunk with score object with the result data
-                doc_chunk_id = search_response.item.metadata.pop('hnsqlite:doc_chunk_id')
-                search_response.item.metadata.pop('hnsqlite:document_id')
+                doc_chunk_id = search_response.metadata.pop('hnsqlite:doc_chunk_id')
                 dcws = DocumentChunkWithScore(id = doc_chunk_id,
                                               score = 1 - search_response.distance,
-                                              text = search_response.item.text,
-                                              metadata = search_response.item.metadata)
+                                              text = search_response.text,
+                                              metadata = search_response.metadata)
                 query_results.append(dcws)
             return QueryResult(query=query.query, results=query_results)
 
@@ -139,8 +138,7 @@ class HnsqliteDataStore(DataStore):
         if ids != None and len(ids) > 0:
             try:
                 print(f"Deleting vectors with ids {ids}")
-                hnsqlite_filter = {"hnsqlite:document_id": {"$in": ids}}
-                self.collection.delete(filter=hnsqlite_filter)  # type: ignore
+                self.collection.delete(doc_ids=ids)
                 print(f"Deleted vectors with ids successfully")
             except Exception as e:
                 print(f"Error deleting vectors with ids: {e}")
