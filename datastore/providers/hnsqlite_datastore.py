@@ -15,18 +15,21 @@ from models.models import (
 from services.date import to_unix_timestamp
 
 HNSQLITE_COLLECTION = os.environ.get("HNSQLITE_COLLECTION", 'default')
+HNSQLITE_DIR        = os.environ.get("HNSQLITE_DIR")
 
-
-
+    
 class HnsqliteDataStore(DataStore):
     def __init__(self):
+        if HNSQLITE_DIR:
+            os.chdir(HNSQLITE_DIR)
         try:
             self.collection = hnsqlite.Collection.from_db(HNSQLITE_COLLECTION)
-            print(f'loaded collection {HNSQLITE_COLLECTION} from db' )
+            print(f'loaded collection {HNSQLITE_COLLECTION} from db with {self.collection.count()} items' )a
         except FileNotFoundError:
             self.collection = hnsqlite.Collection.create(HNSQLITE_COLLECTION, dim=1536)
             print(f'created collection {HNSQLITE_COLLECTION} from db' )
-        
+   
+            
     async def _upsert(self, chunks: Dict[str, List[DocumentChunk]]) -> List[str]:
         """
         Takes in a dict from document id to list of document chunks and inserts them into the index.
@@ -51,7 +54,6 @@ class HnsqliteDataStore(DataStore):
                                                      text = chunk.text,
                                                      doc_id = doc_id,
                                                      metadata = hnsqlite_metadata))
-
         self.collection.add_embeddings(embeddings)
         for e in embeddings:
             print(f'added embedding {e}')

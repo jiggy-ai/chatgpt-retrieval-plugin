@@ -10,13 +10,26 @@ COPY ./pyproject.toml ./poetry.lock* /tmp/
 
 RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
 
-FROM python:3.10
+#FROM python:3.10
+FROM bitnami/python:3.10-prod
+
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get upgrade -y && apt-get install -y python3-pip 
+
+ENV CFLAGS="-mno-avx512f -mno-avx512cd -mno-avx512er -mno-avx512pf -mno-avx512dq -mno-avx512bw -mno-avx512vl -mno-avx512ifma -mno-avx512vbmi"
+ENV CXXFLAGS="${CFLAGS}"
+
+
+# update pip
+RUN pip3 install --upgrade pip
 
 WORKDIR /code
 
 COPY --from=requirements-stage /tmp/requirements.txt /code/requirements.txt
 
-RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
+RUN pip3 install -r  /code/requirements.txt
 
 COPY . /code/
 
