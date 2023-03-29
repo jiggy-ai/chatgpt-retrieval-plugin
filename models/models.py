@@ -56,7 +56,6 @@ class Query(BaseModel):
     filter: Optional[DocumentMetadataFilter] = None
     top_k: Optional[int] = 3
 
-
 class QueryWithEmbedding(Query):
     embedding: List[float]
 

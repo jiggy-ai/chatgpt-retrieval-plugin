@@ -24,7 +24,7 @@ class HnsqliteDataStore(DataStore):
             os.chdir(HNSQLITE_DIR)
         try:
             self.collection = hnsqlite.Collection.from_db(HNSQLITE_COLLECTION)
-            print(f'loaded collection {HNSQLITE_COLLECTION} from db with {self.collection.count()} items' )a
+            print(f'loaded collection {HNSQLITE_COLLECTION} from db with {self.collection.count()} items' )
         except FileNotFoundError:
             self.collection = hnsqlite.Collection.create(HNSQLITE_COLLECTION, dim=1536)
             print(f'created collection {HNSQLITE_COLLECTION} from db' )
@@ -98,6 +98,17 @@ class HnsqliteDataStore(DataStore):
 
         return [_single_query(q) for q in queries]
 
+    async def _chunks(self, start: int, limit: int, reverse :bool) -> List[DocumentChunk]:
+        """
+        Returns a list of document chunks from the datastore
+        """
+        embeddings = self.collection.get_embeddings(start=start, limit=limit, reverse=reverse)
+        results = [DocumentChunk(id = e.metadata.pop('hnsqlite:doc_chunk_id'),
+                                 text = e.text,
+                                 metadata = e.metadata) for e in embeddings]
+        return results
+    
+        
     def count(self) -> int:
         """
         Returns the number of vectors in the index.

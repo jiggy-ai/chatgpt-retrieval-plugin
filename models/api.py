@@ -3,6 +3,7 @@ from models.models import (
     DocumentMetadataFilter,
     Query,
     QueryResult,
+    DocumentChunk,
 )
 from pydantic import BaseModel
 from typing import List, Optional
@@ -32,3 +33,4 @@ class DeleteRequest(BaseModel):
 
 class DeleteResponse(BaseModel):
     success: bool
+

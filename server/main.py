@@ -1,8 +1,9 @@
 import os
 import uvicorn
-from fastapi import FastAPI, File, HTTPException, Depends, Body, UploadFile
+from fastapi import FastAPI, File, HTTPException, Depends, Body, UploadFile, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
+from typing import Optional
 
 from models.api import (
     DeleteRequest,
@@ -11,6 +12,7 @@ from models.api import (
     QueryResponse,
     UpsertRequest,
     UpsertResponse,
+    DocumentChunk,
 )
 from datastore.factory import get_datastore
 from services.file import get_document_from_file
@@ -84,6 +86,22 @@ async def query_main(
             request.queries,
         )
         return QueryResponse(results=results)
+    except Exception as e:
+        print("Error:", e)
+        raise HTTPException(status_code=500, detail="Internal Service Error")
+
+
+
+@app.get(
+    "/chunks",
+    response_model=list[DocumentChunk],
+)
+async def recent_main(start: Optional[int] = Query(default=0, description="Offset of the first result to return"),
+                      limit: Optional[int] = Query(default=10, description="Number of results to return starting from the offset"),
+                      reverse: Optional[bool] = Query(default=True, description="Reverse the order of the items")):
+    try:
+        results = await datastore.chunks(start, limit, reverse)
+        return results
     except Exception as e:
         print("Error:", e)
         raise HTTPException(status_code=500, detail="Internal Service Error")

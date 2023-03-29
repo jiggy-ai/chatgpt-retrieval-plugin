@@ -71,6 +71,19 @@ class DataStore(ABC):
         """
         raise NotImplementedError
 
+    async def chunks(self, start: int, limit: int, reverse :bool) -> List[DocumentChunk]:
+        """
+        Returns a list of document chunks from the datastore.
+        """
+        return await self._chunks(start, limit, reverse)
+
+    @abstractmethod
+    async def _chunks(self, start: int, limit: int, reverse :bool) -> List[DocumentChunk]:
+        """
+        Returns a list of document chunks from the datastore.
+        """
+        raise NotImplementedError
+    
     @abstractmethod
     async def delete(
         self,
