@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Union
 from enum import Enum
 
 
@@ -14,8 +14,10 @@ class DocumentMetadata(BaseModel):
     source_id: Optional[str] = None
     url: Optional[str] = None
     created_at: Optional[str] = None
-    author: Optional[str] = None
+    author: Union[str, List[str]] = None
     title: Optional[str] = None
+    description: Optional[str] = None
+    
 
 class DocumentChunkMetadata(DocumentMetadata):
     document_id: Optional[str] = None
@@ -49,6 +51,7 @@ class DocumentMetadataFilter(BaseModel):
     author: Optional[str] = None
     start_date: Optional[str] = None  # any date string format
     end_date: Optional[str] = None  # any date string format
+    title: Optional[str] = None
 
 
 class Query(BaseModel):
