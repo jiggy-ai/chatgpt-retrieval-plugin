@@ -7,7 +7,7 @@ class Source(str, Enum):
     email = "email"
     file = "file"
     chat = "chat"
-
+    web  = "web"
 
 class DocumentMetadata(BaseModel):
     source: Optional[Source] = None
@@ -15,7 +15,7 @@ class DocumentMetadata(BaseModel):
     url: Optional[str] = None
     created_at: Optional[str] = None
     author: Optional[str] = None
-
+    title: Optional[str] = None
 
 class DocumentChunkMetadata(DocumentMetadata):
     document_id: Optional[str] = None
