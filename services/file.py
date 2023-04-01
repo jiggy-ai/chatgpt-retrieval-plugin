@@ -49,6 +49,20 @@ def extract_text_from_file(file: BufferedReader, mimetype: str) -> str:
     elif mimetype == "text/plain" or mimetype == "text/markdown":
         # Read text from plain text file
         extracted_text = file.read().decode("utf-8")
+    elif (mimetype == "application/msword"):
+        input_file = "/tmp/tmp.doc"
+        open(input_file, 'wb').write(file.read())
+        import subprocess       
+        output_folder = "/tmp/"
+        output_format = "docx:\"Office Open XML Text\""
+        command = f"libreoffice --headless --convert-to {output_format} --outdir {output_folder} {input_file}"
+        try:
+            subprocess.run(command, shell=True, check=True)
+        except:
+            raise ValueError("Unable to convert doc to docx.")      
+        extracted_text = docx2txt.process(f"{output_folder}/tmp.docx")  
+        os.unlink(f"{output_folder}/tmp.docx")
+        os.unlink(input_file)
     elif (
         mimetype
         == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
