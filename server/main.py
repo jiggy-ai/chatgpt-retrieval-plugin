@@ -1,6 +1,7 @@
+from loguru import logger
 import os
 import uvicorn
-from fastapi import FastAPI, File, HTTPException, Depends, Body, UploadFile, Query
+from fastapi import FastAPI, File, HTTPException, Depends, Body, UploadFile, Query, Path
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
 from typing import Optional
@@ -49,13 +50,17 @@ app.mount("/sub", sub_app)
 async def upsert_file(
     file: UploadFile = File(...),
 ):
+    logger.info(f"Received file {file.filename}")
     document = await get_document_from_file(file)
 
     try:
         ids = await datastore.upsert([document])
         return UpsertResponse(ids=ids)
+    except ValueError as e:
+        logger.error(e)
+        raise HTTPException(status_code=400, detail=str(e))            
     except Exception as e:
-        print("Error:", e)
+        logger.error("Error:", e)
         raise HTTPException(status_code=500, detail=f"str({e})")
 
 
@@ -66,11 +71,15 @@ async def upsert_file(
 async def upsert(
     request: UpsertRequest = Body(...),
 ):
+    logger.info(f"{len(request.documents)} documents")
     try:
         ids = await datastore.upsert(request.documents)
         return UpsertResponse(ids=ids)
+    except ValueError as e:
+        logger.error(e)
+        raise HTTPException(status_code=400, detail=str(e))    
     except Exception as e:
-        print("Error:", e)
+        logger.error(e)
         raise HTTPException(status_code=500, detail="Internal Service Error")
 
 
@@ -81,13 +90,34 @@ async def upsert(
 async def query_main(
     request: QueryRequest = Body(...),
 ):
+    logger.info(request)
     try:
         results = await datastore.query(
             request.queries,
         )
         return QueryResponse(results=results)
+    except ValueError as e:
+        logger.error(e)
+        raise HTTPException(status_code=400, detail=str(e))    
     except Exception as e:
-        print("Error:", e)
+        logger.error("Error:", e)
+        raise HTTPException(status_code=500, detail="Internal Service Error")
+
+
+@app.get(
+    "/docs/{doc_id}",
+    response_model=list[DocumentChunk],
+)
+async def docs(doc_id: str = Path(..., description="The document ID to get" )):
+    logger.info(doc_id)
+    try:
+        results = await datastore.doc(doc_id)
+        return results
+    except ValueError as e:
+        logger.error(e)
+        raise HTTPException(status_code=400, detail=str(e))        
+    except Exception as e:
+        logger.error("Error:", e)
         raise HTTPException(status_code=500, detail="Internal Service Error")
 
 
@@ -96,15 +126,21 @@ async def query_main(
     "/chunks",
     response_model=list[DocumentChunk],
 )
-async def recent_main(start: Optional[int] = Query(default=0, description="Offset of the first result to return"),
-                      limit: Optional[int] = Query(default=10, description="Number of results to return starting from the offset"),
-                      reverse: Optional[bool] = Query(default=True, description="Reverse the order of the items")):
+async def chunks(start: Optional[int] = Query(default=0, description="Offset of the first result to return"),
+                 limit: Optional[int] = Query(default=10, description="Number of results to return starting from the offset"),
+                 reverse: Optional[bool] = Query(default=True, description="Reverse the order of the items")):
+    logger.info(f"start {start}, limit {limit}, reverse {reverse}")
     try:
         results = await datastore.chunks(start, limit, reverse)
         return results
+    except ValueError as e:
+        logger.error(e)
+        raise HTTPException(status_code=400, detail=str(e))        
     except Exception as e:
-        print("Error:", e)
+        logger.error("Error:", e)
         raise HTTPException(status_code=500, detail="Internal Service Error")
+
+
 
 
 @sub_app.post(
@@ -116,13 +152,17 @@ async def recent_main(start: Optional[int] = Query(default=0, description="Offse
 async def query(
     request: QueryRequest = Body(...),
 ):
+    logger.info(request)
     try:
         results = await datastore.query(
             request.queries,
         )
         return QueryResponse(results=results)
+    except ValueError as e:
+        logger.error(e)
+        raise HTTPException(status_code=400, detail=str(e))        
     except Exception as e:
-        print("Error:", e)
+        logger.error("Error:", e)
         raise HTTPException(status_code=500, detail="Internal Service Error")
 
 
@@ -133,6 +173,7 @@ async def query(
 async def delete(
     request: DeleteRequest = Body(...),
 ):
+    logger.info(request)
     if not (request.ids or request.filter or request.delete_all):
         raise HTTPException(
             status_code=400,
@@ -145,8 +186,11 @@ async def delete(
             delete_all=request.delete_all,
         )
         return DeleteResponse(success=success)
+    except ValueError as e:
+        logger.error(e)
+        raise HTTPException(status_code=400, detail=str(e))        
     except Exception as e:
-        print("Error:", e)
+        logger.error("Error:", e)
         raise HTTPException(status_code=500, detail="Internal Service Error")
 
 

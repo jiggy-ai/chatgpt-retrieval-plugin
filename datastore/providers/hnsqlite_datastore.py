@@ -1,3 +1,4 @@
+from loguru import logger
 import os
 from typing import Any, Dict, List, Optional
 import hnsqlite
@@ -24,10 +25,10 @@ class HnsqliteDataStore(DataStore):
             os.chdir(HNSQLITE_DIR)
         try:
             self.collection = hnsqlite.Collection.from_db(HNSQLITE_COLLECTION)
-            print(f'loaded collection {HNSQLITE_COLLECTION} from db with {self.collection.count()} items' )
+            logger.info(f'loaded collection {HNSQLITE_COLLECTION} from db with {self.collection.count()} items' )
         except FileNotFoundError:
             self.collection = hnsqlite.Collection.create(HNSQLITE_COLLECTION, dim=1536)
-            print(f'created collection {HNSQLITE_COLLECTION} from db' )
+            logger.info(f'created collection {HNSQLITE_COLLECTION} from db' )
    
             
     async def _upsert(self, chunks: Dict[str, List[DocumentChunk]]) -> List[str]:
@@ -35,6 +36,8 @@ class HnsqliteDataStore(DataStore):
         Takes in a dict from document id to list of document chunks and inserts them into the index.
         Return a list of document ids.
         """
+        if not chunks:
+            raise ValueError("missing chunks")
         # Initialize a list of ids to return
         doc_ids: List[str] = []
         # Initialize a list of vectors to add to the index
@@ -43,7 +46,7 @@ class HnsqliteDataStore(DataStore):
         for doc_id, chunk_list in chunks.items():
             # Append the id to the ids list
             doc_ids.append(doc_id)
-            print(f"Upserting document_id: {doc_id}")
+            logger.info(f"Upserting document_id: {doc_id}")
             for chunk in chunk_list:
                 # Create a vector tuple of (id, embedding, metadata)
                 # Convert the metadata object to a dict with unix timestamps for dates
@@ -56,7 +59,7 @@ class HnsqliteDataStore(DataStore):
                                                      metadata = hnsqlite_metadata))
         self.collection.add_embeddings(embeddings)
         for e in embeddings:
-            print(f'added embedding {e}')
+            logger.info(f'added embedding {e}')
         return doc_ids
 
     async def _query(
@@ -69,7 +72,7 @@ class HnsqliteDataStore(DataStore):
 
         # Define a helper coroutine that performs a single query and returns a QueryResult
         def _single_query(query: QueryWithEmbedding) -> QueryResult:
-            print(f"Query: {query.query}")
+            logger.info(f"Query: {query.query}")
 
             # Convert the metadata filter object to a dict with hnsqlite filter expressions
             hnsqlite_filter = self._get_hnsqlite_filter(query.filter)
@@ -82,7 +85,7 @@ class HnsqliteDataStore(DataStore):
             except hnsqlite.NoResultError:
                 return QueryResult(query=query.query, results=[])
             except Exception as e:
-                print(f"Error querying index: {e}")
+                logger.error(f"Error querying index: {e}")
                 raise e
 
             query_results: List[DocumentChunkWithScore] = []
@@ -114,6 +117,16 @@ class HnsqliteDataStore(DataStore):
         Returns the number of vectors in the index.
         """
         return self.collection.count()
+
+    async def _doc(self, doc_id) -> List[DocumentChunk]:
+        """
+        Returns a list of document chunks from the datastore based on the doc_id
+        """
+        embeddings = self.collection.get_embeddings_doc_ids([doc_id])
+        results = [DocumentChunk(id = e.metadata.pop('hnsqlite:doc_chunk_id'),
+                                 text = e.text,
+                                 metadata = e.metadata) for e in embeddings]
+        return results        
     
     async def delete(
         self,
@@ -127,12 +140,11 @@ class HnsqliteDataStore(DataStore):
         # Delete all vectors from the index if delete_all is True
         if delete_all == True:
             try:
-                print(f"Deleting all vectors from index")
+                logger.info(f"Deleting all vectors from index")
                 self.collection.delete(delete_all=True)
-                print(f"Deleted all vectors successfully")
                 return True
             except Exception as e:
-                print(f"Error deleting all vectors: {e}")
+                logger.error(f"Error deleting all vectors: {e}")
                 raise e
 
         # Convert the metadata filter object to a dict with hnsqlite filter expressions
@@ -140,21 +152,21 @@ class HnsqliteDataStore(DataStore):
         # Delete vectors that match the filter from the index if the filter is not empty
         if hnsqlite_filter != {}:
             try:
-                print(f"Deleting vectors with filter {hnsqlite_filter}")
-                self.collection.delete(filter=hnsqlite_filter)
-                print(f"Deleted vectors with filter successfully")
+                if len(hnsqlite_filter) == 1 and 'document_id' in hnsqlite_filter:
+                    # If the filter is just a document_id, use the hnsqlite delete by doc_id method
+                    self.collection.delete(doc_ids=[hnsqlite_filter['document_id']])
+                else:
+                    self.collection.delete(filter=hnsqlite_filter)
             except Exception as e:
-                print(f"Error deleting vectors with filter: {e}")
+                logger.error(f"Error deleting vectors with filter: {e}")
                 raise e
 
         # Delete vectors that match the document ids from the index if the ids list is not empty
         if ids != None and len(ids) > 0:
             try:
-                print(f"Deleting vectors with ids {ids}")
                 self.collection.delete(doc_ids=ids)
-                print(f"Deleted vectors with ids successfully")
             except Exception as e:
-                print(f"Error deleting vectors with ids: {e}")
+                logger.error(f"Error deleting vectors with ids: {e}")
                 raise e
 
         return True

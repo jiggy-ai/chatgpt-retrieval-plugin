@@ -1,3 +1,4 @@
+from loguru import logger
 from typing import List
 import openai
 
@@ -55,5 +56,5 @@ def get_chat_completion(
 
     choices = response["choices"]  # type: ignore
     completion = choices[0].message.content.strip()
-    print(f"Completion: {completion}")
+    logger.info(f"Completion: {completion}")
     return completion

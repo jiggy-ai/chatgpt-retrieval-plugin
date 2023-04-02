@@ -1,3 +1,4 @@
+from loguru import logger
 import os
 from io import BufferedReader
 from typing import Optional
@@ -104,9 +105,9 @@ async def extract_text_from_form_file(file: UploadFile):
     """Return the text content of a file."""
     # get the file body from the upload file object
     mimetype = file.content_type
-    print(f"mimetype: {mimetype}")
-    print(f"file.file: {file.file}")
-    print("file: ", file)
+    logger.info(f"mimetype: {mimetype}")
+    logger.info(int(f"file.file: {file.file}"))
+    logger.info("file: ", file)
 
     file_stream = await file.read()
 
@@ -119,7 +120,7 @@ async def extract_text_from_form_file(file: UploadFile):
     try:
         extracted_text = extract_text_from_filepath(temp_file_path, mimetype)
     except Exception as e:
-        print(f"Error: {e}")
+        logger.error(f"Error: {e}")
         os.remove(temp_file_path)
         raise e
 

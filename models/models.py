@@ -9,6 +9,7 @@ class Source(str, Enum):
     chat = "chat"
     web  = "web"
 
+
 class DocumentMetadata(BaseModel):
     source: Optional[Source] = None
     source_id: Optional[str] = None
@@ -28,6 +29,22 @@ class DocumentChunk(BaseModel):
     text: str
     metadata: DocumentChunkMetadata
     embedding: Optional[List[float]] = None
+
+    def __str__(self):
+        if len(self.text) > 100:
+            text = self.text[:100] + '...'
+        else: 
+            text = self.text
+        text = text.replace('\n', ' ')
+        estr = "DocumentChunk("
+        if self.id is not None:
+            estr += f"id={self.id}, "
+        if self.metadata is not None:
+            estr += f"metadata={str(self.metadata)}, "
+        if self.embedding is not None:
+            estr += f"embedding=dim{len(self.embedding)}, "
+        estr += f"text={text})"
+        return estr
 
 
 class DocumentChunkWithScore(DocumentChunk):

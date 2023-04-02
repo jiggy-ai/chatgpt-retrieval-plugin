@@ -1,3 +1,4 @@
+from loguru import logger
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional
 import asyncio
@@ -13,7 +14,7 @@ from models.models import (
 from services.chunks import get_document_chunks
 from services.openai import get_embeddings
 
-
+        
 class DataStore(ABC):
     async def upsert(
         self, documents: List[Document], chunk_token_size: Optional[int] = None
@@ -36,9 +37,9 @@ class DataStore(ABC):
                 if document.id
             ]
         )
-
         chunks = get_document_chunks(documents, chunk_token_size)
-
+        if not chunks:
+            raise ValueError("No useable content found in documents")
         return await self._upsert(chunks)
 
     @abstractmethod
@@ -73,16 +74,31 @@ class DataStore(ABC):
 
     async def chunks(self, start: int, limit: int, reverse :bool) -> List[DocumentChunk]:
         """
-        Returns a list of document chunks from the datastore.
+        Returns a list of document chunks from the datastore based on the start, limit, and reverse parameters.
         """
         return await self._chunks(start, limit, reverse)
 
     @abstractmethod
     async def _chunks(self, start: int, limit: int, reverse :bool) -> List[DocumentChunk]:
         """
-        Returns a list of document chunks from the datastore.
+        Returns a list of document chunks from the datastore based on the start, limit, and reverse parameters.
         """
         raise NotImplementedError
+
+
+    async def doc(self, doc_id) -> List[DocumentChunk]:
+        """
+        Returns a list of document chunks from the datastore based on the doc_id
+        """
+        return await self._doc(doc_id)
+
+    @abstractmethod
+    async def _doc(self, doc_id) -> List[DocumentChunk]:
+        """
+        Returns a list of document chunks from the datastore based on the doc_id
+        """
+        raise NotImplementedError
+
     
     @abstractmethod
     async def delete(

@@ -1,3 +1,4 @@
+from loguru import logger
 from models.models import Source
 from services.openai import get_chat_completion
 import json
@@ -28,7 +29,7 @@ def extract_metadata_from_document(text: str) -> Dict[str, str]:
         messages, "gpt-4"
     )  # TODO: change to your preferred model name
 
-    print(f"completion: {completion}")
+    logger.info(f"completion: {completion}")
 
     try:
         metadata = json.loads(completion)
