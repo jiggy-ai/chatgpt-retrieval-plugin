@@ -17,6 +17,7 @@ from models.api import (
 )
 from datastore.factory import get_datastore
 from services.file import get_document_from_file
+from services.extract_metadata import extract_metadata_from_document
 
 bearer_scheme = HTTPBearer()
 BEARER_TOKEN = os.environ.get("BEARER_TOKEN")
@@ -53,8 +54,13 @@ async def upsert_file(
     logger.info(f"Received file {file.filename}")
     document = await get_document_from_file(file)
 
+    extracted_metadata = extract_metadata_from_document(document.text)
+    for k, v in extracted_metadata.items():
+        if k not in document.metadata.dict():
+            logger.info(f"Adding metadata {k}={v}")
+            document.metadata[k] = v
     try:
-        ids = await datastore.upsert([document])
+        ids = await datastore.upsert([document])        
         return UpsertResponse(ids=ids)
     except ValueError as e:
         logger.error(e)

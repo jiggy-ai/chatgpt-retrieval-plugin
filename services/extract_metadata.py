@@ -8,21 +8,20 @@ from typing import Dict
 def extract_metadata_from_document(text: str) -> Dict[str, str]:
     sources = Source.__members__.keys()
     sources_string = ", ".join(sources)
-    # This prompt is just an example, change it to fit your use case
     messages = [
         {
             "role": "system",
             "content": f"""
-            Given a document from a user, try to extract the following metadata:
-            - source: string, one of {sources_string}
-            - url: string or don't specify
-            - created_at: string or don't specify
-            - author: string or don't specify
-
-            Respond with a JSON containing the extracted metadata in key value pairs. If you don't find a metadata field, don't specify it.
+            Given the beginning of some content from a user, please extract the following metadata:
+            - title: string (or None if unknown) of the title of the content.  If no title is specified output a good short title for the content.            
+            - author: string (or None if unknown) of the author of the content.
+            - created_at: string (or None if unknown) of the data in the format YYYY-MM-DD that the content was created if it appears in the content.            
+            Please respond with JSON output containing the extracted metadata in key value pairs. 
+            The keys for the metadata are "created_at", "author", and "title".
+            If you don't find a metadata field, you don't need to include it.  Do not use "unknown", "not found" or similar as output values.
             """,
         },
-        {"role": "user", "content": text},
+        {"role": "user", "content": text[:2048]},
     ]
 
     completion = get_chat_completion(

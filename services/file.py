@@ -106,8 +106,6 @@ async def extract_text_from_form_file(file: UploadFile):
     # get the file body from the upload file object
     mimetype = file.content_type
     logger.info(f"mimetype: {mimetype}")
-    logger.info(int(f"file.file: {file.file}"))
-    logger.info("file: ", file)
 
     file_stream = await file.read()
 
