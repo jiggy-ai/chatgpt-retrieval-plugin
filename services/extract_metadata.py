@@ -28,8 +28,6 @@ def extract_metadata_from_document(text: str) -> Dict[str, str]:
         messages, "gpt-4"
     )  # TODO: change to your preferred model name
 
-    logger.info(f"completion: {completion}")
-
     try:
         metadata = json.loads(completion)
     except:

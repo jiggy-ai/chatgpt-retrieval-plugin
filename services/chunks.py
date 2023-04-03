@@ -1,3 +1,4 @@
+from loguru import logger
 from typing import Dict, List, Optional, Tuple
 import uuid
 from models.models import Document, DocumentChunk, DocumentChunkMetadata
@@ -86,7 +87,10 @@ def get_text_chunks(text: str, chunk_token_size: Optional[int]) -> List[str]:
 
         # Increment the number of chunks
         num_chunks += 1
-
+        
+    if num_chunks == MAX_NUM_CHUNKS:
+        logger.warning(f"Reached the maximum number of chunks ({MAX_NUM_CHUNKS}) for text of length {len(text)}")
+        
     # Handle the remaining tokens
     if tokens:
         remaining_text = tokenizer.decode(tokens).replace("\n", " ").strip()
@@ -182,12 +186,20 @@ def get_document_chunks(
 
     # Get all the embeddings for the document chunks in batches, using get_embeddings
     embeddings: List[List[float]] = []
+
+    def headerize(chunk: DocumentChunk) -> str:
+        prefix = ""
+        if chunk.metadata.source_id:
+            prefix += f'{chunk.metadata.source_id}: '        
+        if chunk.metadata.title:
+            prefix += f'{chunk.metadata.title}: '
+        if chunk.metadata.author:
+            prefix += f'{chunk.metadata.author}: '            
+        return prefix + chunk.text
+    
     for i in range(0, len(all_chunks), EMBEDDINGS_BATCH_SIZE):
         # Get the text of the chunks in the current batch
-        batch_texts = [
-            chunk.text for chunk in all_chunks[i : i + EMBEDDINGS_BATCH_SIZE]
-        ]
-
+        batch_texts = [headerize(chunk) for chunk in all_chunks[i : i + EMBEDDINGS_BATCH_SIZE]]
         # Get the embeddings for the batch texts
         batch_embeddings = get_embeddings(batch_texts)
 

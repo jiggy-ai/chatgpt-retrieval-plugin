@@ -69,6 +69,7 @@ class DocumentMetadataFilter(BaseModel):
     start_date: Optional[str] = None  # any date string format
     end_date: Optional[str] = None  # any date string format
     title: Optional[str] = None
+    url: Optional[str] = None
 
 
 class Query(BaseModel):

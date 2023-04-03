@@ -5,6 +5,7 @@ from fastapi import FastAPI, File, HTTPException, Depends, Body, UploadFile, Que
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
 from typing import Optional
+from services.extract_metadata import extract_metadata_from_document
 
 from models.api import (
     DeleteRequest,
@@ -17,7 +18,6 @@ from models.api import (
 )
 from datastore.factory import get_datastore
 from services.file import get_document_from_file
-from services.extract_metadata import extract_metadata_from_document
 
 bearer_scheme = HTTPBearer()
 BEARER_TOKEN = os.environ.get("BEARER_TOKEN")
@@ -52,14 +52,8 @@ async def upsert_file(
     file: UploadFile = File(...),
 ):
     logger.info(f"Received file {file.filename}")
-    document = await get_document_from_file(file)
-
-    extracted_metadata = extract_metadata_from_document(document.text)
-    for k, v in extracted_metadata.items():
-        if k not in document.metadata.dict():
-            logger.info(f"Adding metadata {k}={v}")
-            document.metadata[k] = v
     try:
+        document = await get_document_from_file(file)        
         ids = await datastore.upsert([document])        
         return UpsertResponse(ids=ids)
     except ValueError as e:
@@ -79,6 +73,14 @@ async def upsert(
 ):
     logger.info(f"{len(request.documents)} documents")
     try:
+        for document in request.documents:
+            # attempt to extract metadata if any of our 3 extracted metadata fields are missing
+            if not {'created_at', 'title', 'author'}.issubset(document.metadata.dict(exclude_none=True)):
+                extracted_metadata = extract_metadata_from_document(document.text)
+                for k, v in extracted_metadata.items():
+                    if k not in document.metadata.dict():  # don't overwrite existing metadata
+                        logger.info(f"Adding metadata {k}={v}")
+                        document.metadata[k] = v                    
         ids = await datastore.upsert(request.documents)
         return UpsertResponse(ids=ids)
     except ValueError as e:

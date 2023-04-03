@@ -10,15 +10,20 @@ import csv
 import pptx
 
 from models.models import Document, DocumentMetadata, Source
+from services.extract_metadata import extract_metadata_from_document
 
 
 async def get_document_from_file(file: UploadFile) -> Document:
     extracted_text = await extract_text_from_form_file(file)
-    metadata = DocumentMetadata(
-        source=Source.file,
-    )
-    doc = Document(text=extracted_text, metadata=metadata)
+    extracted_metadata = extract_metadata_from_document(extracted_text)
+    logger.info(f"Extracted metadata: {extracted_metadata}")
 
+    metadata = DocumentMetadata(source    = Source.file, 
+                                source_id = file.filename, 
+                                **extracted_metadata)
+    logger.info(metadata)
+    doc = Document(text=extracted_text, metadata=metadata)
+    
     return doc
 
 
@@ -42,6 +47,16 @@ def extract_text_from_filepath(filepath: str, mimetype: Optional[str] = None) ->
     return extracted_text
 
 
+excel_mimetypes = ["application/vnd.ms-excel",                                           # Excel 97-2003 Workbook (.xls)
+                   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",  # Excel Workbook (.xlsx)
+                   "application/vnd.ms-excel.sheet.macroEnabled.12",                     # Excel Macro-Enabled Workbook (.xlsm)
+                   "application/vnd.ms-excel.sheet.binary.macroEnabled.12",              # Excel Binary Workbook (.xlsb) 
+                   "application/vnd.ms-excel.template.macroEnabled.12",                  # Excel Template (.xlt)
+                   "application/vnd.ms-excel.template.macroEnabled.12",                  # Excel Macro-Enabled Template (.xltm)
+                   "application/vnd.ms-excel.addin.macroEnabled.12"]                     # Excel Add-In (.xlam)
+
+
+
 def extract_text_from_file(file: BufferedReader, mimetype: str) -> str:
     if mimetype == "application/pdf":
         # Extract text from pdf using PyPDF2
@@ -50,6 +65,10 @@ def extract_text_from_file(file: BufferedReader, mimetype: str) -> str:
     elif mimetype == "text/plain" or mimetype == "text/markdown":
         # Read text from plain text file
         extracted_text = file.read().decode("utf-8")
+    elif mimetype in excel_mimetypes:
+        # really want the original filename here not a fp since not clear if the file suffix is in play
+        # libreoffice --headless --convert-to csv --outdir /home/user/documents /home/user/documents/input_file.xlsm
+        raise ValueError("Excel files are not yet supported.")
     elif (mimetype == "application/msword"):
         input_file = "/tmp/tmp.doc"
         open(input_file, 'wb').write(file.read())
