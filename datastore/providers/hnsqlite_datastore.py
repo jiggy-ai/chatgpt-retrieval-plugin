@@ -16,20 +16,14 @@ from models.models import (
 from services.date import to_unix_timestamp
 
 HNSQLITE_COLLECTION = os.environ.get("HNSQLITE_COLLECTION", 'default')
-HNSQLITE_DIR        = os.environ.get("HNSQLITE_DIR")
+HNSQLITE_DIR        = os.environ.get("HNSQLITE_DIR", '.')
 
     
 class HnsqliteDataStore(DataStore):
     def __init__(self):
-        if HNSQLITE_DIR:
-            os.chdir(HNSQLITE_DIR)
-        try:
-            self.collection = hnsqlite.Collection.from_db(HNSQLITE_COLLECTION)
-            logger.info(f'loaded collection {HNSQLITE_COLLECTION} from db with {self.collection.count()} items' )
-        except FileNotFoundError:
-            self.collection = hnsqlite.Collection.create(HNSQLITE_COLLECTION, dim=1536)
-            logger.info(f'created collection {HNSQLITE_COLLECTION} from db' )
-   
+        os.chdir(HNSQLITE_DIR) # this goes away hnsqlite saves index in db
+        dbfile = f'{HNSQLITE_DIR}/collection__{HNSQLITE_COLLECTION}.sqlite'
+        self.collection = hnsqlite.Collection(collection_name=HNSQLITE_COLLECTION, sqlite_filename=dbfile, dimension=1536)
             
     async def _upsert(self, chunks: Dict[str, List[DocumentChunk]]) -> List[str]:
         """
