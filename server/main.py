@@ -6,6 +6,11 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
 from typing import Optional
 from services.extract_metadata import extract_metadata_from_document
+from server.config import HOSTNAME, FullPluginConfig
+from fastapi.openapi.utils import get_openapi
+import yaml
+import json
+
 
 from models.api import (
     DeleteRequest,
@@ -31,17 +36,21 @@ def validate_token(credentials: HTTPAuthorizationCredentials = Depends(bearer_sc
 
 
 app = FastAPI(dependencies=[Depends(validate_token)])
-app.mount("/.well-known", StaticFiles(directory=".well-known"), name="static")
 
-# Create a sub-application, in order to access just the query endpoint in an OpenAPI schema, found at http://0.0.0.0:8000/sub/openapi.json when the app is running locally
+# Create a sub-application, in order to access just the query endpoint in an OpenAPI schema, found at http://0.0.0.0:8000/plugin/openapi.json when the app is running locally
 sub_app = FastAPI(
     title="Retrieval Plugin API",
     description="A retrieval API for querying and filtering documents based on natural language queries and metadata",
-    version="1.0.0",
-    servers=[{"url": "https://your-app-url.com"}],
-    dependencies=[Depends(validate_token)],
+    version="1.0.1",
+    servers=[{"url": f"https://{HOSTNAME}.gpt-gateway.com/plugin"}],
+    #dependencies=[Depends(validate_token)],
 )
-app.mount("/sub", sub_app)
+app.mount("/plugin", sub_app)
+
+
+
+app.mount("/.well-known", StaticFiles(directory="/code/.well-known"), name="static")
+
 
 
 @app.post(
@@ -207,6 +216,18 @@ async def startup():
     global datastore
     datastore = await get_datastore()
 
+
+# update .well-known specs to match current config
+from pydantic.networks import AnyUrl, url_regex
+def _any_url_representer(dumper, data):
+    return dumper.represent_scalar("!anyurl", str(data))
+yaml.add_representer(AnyUrl, _any_url_representer)
+# omitted the constructor for AnyUrl since it is not required here
+yaml.add_implicit_resolver("!anyurl", url_regex())
+with open("/code/.well-known/openapi.yaml", "w") as output_file:
+    output_file.write(yaml.dump(sub_app.openapi(), sort_keys=False, allow_unicode=True))
+with open("/code/.well-known/ai-plugin.json", "w") as output_file:
+    output_file.write(json.dumps(FullPluginConfig().dict(), indent=4, sort_keys=False))
 
 def start():
     uvicorn.run("server.main:app", host="0.0.0.0", port=8000, reload=True)
