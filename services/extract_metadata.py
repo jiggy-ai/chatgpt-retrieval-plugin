@@ -3,9 +3,14 @@ from models.models import Source
 from services.openai import get_chat_completion
 import json
 from typing import Dict
-
+from server.config import extract_metadata_config
 
 def extract_metadata_from_document(text: str) -> Dict[str, str]:
+    
+    if not extract_metadata_config.extract:
+        logger.info("Extracting metadata is disabled")
+        return {}  # extraction is disabled
+    
     sources = Source.__members__.keys()
     sources_string = ", ".join(sources)
     messages = [
@@ -30,6 +35,8 @@ def extract_metadata_from_document(text: str) -> Dict[str, str]:
 
     try:
         metadata = json.loads(completion)
+        allowed_keys = {'created_at', 'title', 'author'}
+        metadata = {key: value for key, value in metadata.items() if key in allowed_keys}
     except:
         metadata = {}
 
