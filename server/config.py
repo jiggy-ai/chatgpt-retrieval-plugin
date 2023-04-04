@@ -4,8 +4,10 @@ from typing import List, Optional, Union
 from enum import Enum
 import json
 
+# System configurable items 
 
 HOSTNAME = os.environ['HOSTNAME']
+
 
 class PluginConfig(BaseModel): 
     """
@@ -34,26 +36,10 @@ class PluginApiConfig(BaseModel):
     url: HttpUrl = f"https://{HOSTNAME}.gpt-gateway.com/.well-known/openapi.yaml"
     has_user_authentication: bool = False
 
-class FullPluginConfig(BaseModel):
-    schema_version:        str = "v1"
-    name_for_model:        str = "retrieval"
-    name_for_human:        str = "Retrieval Plugin"
-    description_for_model: str = "Plugin for searching through the user's documents (such as files, emails, and more) to find answers to questions and retrieve relevant information. Use it whenever a user asks something that might be found in their personal information."
-    description_for_human: str = "Search through your documents."
-    auth:     PluginAuthConfig = PluginAuthConfigNone()
-    api:       PluginApiConfig = PluginApiConfig()
-    logo_url:          HttpUrl = f"https://{HOSTNAME}.gpt-gateway.com/.well-known/logo.png"
-    contact_email:         str = "hello@gpt-gateway.com"
-    legal_info_url:    HttpUrl = "https://gpt-gateway/legal"
-
-
 
 class EmbeddingConfig(BaseModel):
     model     : Optional[str] 
-
     
-class ChatConfig(BaseModel):
-    system_prompt: Optional[str] 
     
 class AuthConfig(BaseModel):
     """
@@ -77,14 +63,32 @@ class ServiceConfig(BaseModel):
     """
     plugin:    Optional[PluginConfig]
     embedding: Optional[EmbeddingConfig]
-    chat:      Optional[ChatConfig]
     auth:      Optional[AuthConfig]
-    chunk:     Optional[ChunkConfig]       = ChunkConfig()
+    chunk:     ChunkConfig       = ChunkConfig()
 
 
 class ExtractMetadataConfig(BaseModel):
     extract: bool = False
-    
+
+
+
+class FullPluginConfig(BaseModel):
+    """
+    Full plugin configuration, only partially exposed to the user
+    """
+    schema_version:        str = "v1"
+    name_for_model:        str = "retrieval"
+    name_for_human:        str = f"{HOSTNAME} Plugin"
+    description_for_model: str = f"Plugin for searching through the user's collection of '{HOSTNAME}' documents (such as files, emails, and more) to find answers to questions and retrieve relevant information. Use it whenever a user asks something that might be found in their personal information."
+    description_for_human: str = f"Search through your collection of '{HOSTNAME}' documents."
+    auth:     PluginAuthConfig = PluginAuthConfigNone()
+    api:       PluginApiConfig = PluginApiConfig()
+    logo_url:          HttpUrl = f"https://{HOSTNAME}.gpt-gateway.com/.well-known/logo.png"
+    contact_email:         str = "hello@gpt-gateway.com"
+    legal_info_url:    HttpUrl = "https://gpt-gateway/legal"
+
+
+##  Load Config from Environment
 service_config = os.environ.get('SERVICE_CONFIG')
     
 service_config = ServiceConfig(**json.loads(service_config))
