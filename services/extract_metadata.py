@@ -6,10 +6,13 @@ from typing import Dict
 from server.config import extract_metadata_config
 
 def extract_metadata_from_document(text: str) -> Dict[str, str]:
-    
-    if not extract_metadata_config.extract:
-        logger.info("Extracting metadata is disabled")
-        return {}  # extraction is disabled
+
+    config = extract_metadata_config.dict()
+    model = config.pop("model")    
+    allowed_keys = {k for k, v in config.items() if v}
+    if not allowed_keys:
+        logger.info("No metadata extraction is enabled")
+        return {}  # no extraction is enabled
     
     sources = Source.__members__.keys()
     sources_string = ", ".join(sources)
@@ -29,14 +32,15 @@ def extract_metadata_from_document(text: str) -> Dict[str, str]:
         {"role": "user", "content": text[:2048]},
     ]
 
-    completion = get_chat_completion(
-        messages, "gpt-4"
-    )  # TODO: change to your preferred model name
+    completion = get_chat_completion(messages, model=model)
+
 
     try:
         metadata = json.loads(completion)
-        allowed_keys = {'created_at', 'title', 'author'}
         metadata = {key: value for key, value in metadata.items() if key in allowed_keys}
+        for k, v in metadata.items():
+            logger.info(f"Extracted metadata {k}={v}")
+        metadata = {k: v for k, v in metadata.items() if v}   # remove empty/None values
     except:
         metadata = {}
 

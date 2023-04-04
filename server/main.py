@@ -6,7 +6,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
 from typing import Optional
 from services.extract_metadata import extract_metadata_from_document
-from server.config import HOSTNAME, FullPluginConfig
+from server.config import HOSTNAME, plugin_config
 from fastapi.openapi.utils import get_openapi
 import yaml
 import json
@@ -227,7 +227,7 @@ yaml.add_implicit_resolver("!anyurl", url_regex())
 with open("/code/.well-known/openapi.yaml", "w") as output_file:
     output_file.write(yaml.dump(sub_app.openapi(), sort_keys=False, allow_unicode=True))
 with open("/code/.well-known/ai-plugin.json", "w") as output_file:
-    output_file.write(json.dumps(FullPluginConfig().dict(), indent=4, sort_keys=False))
+    output_file.write(json.dumps(plugin_config.dict(), indent=4, sort_keys=False))
 
 def start():
     uvicorn.run("server.main:app", host="0.0.0.0", port=8000, reload=True)
