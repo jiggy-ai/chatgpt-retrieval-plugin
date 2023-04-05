@@ -120,7 +120,7 @@ class FullPluginConfigV1(BaseModel):
     Full plugin configuration, only partially exposed to the user
     Used to generate .well-known/ai-plugin.json
     """
-    schema_version:        str = "v1"
+    schema_version:        str = Field("v1", const=True)
     name_for_model:        str 
     name_for_human:        str 
     description_for_model: str 
