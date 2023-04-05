@@ -1,37 +1,19 @@
+from loguru import logger
 import os
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, HttpUrl, Field
 from typing import List, Optional, Union
 from enum import Enum
 import json
 
-# Configurable items 
+HOSTNAME = os.environ['HOSTNAME']   
 
-HOSTNAME = os.environ['HOSTNAME']
+# User Configurable items 
 
 class PluginAuthType(Enum):
     bearer = "bearer"
     none   = "none"
     oauth  = "oauth"
     
-
-class PluginAuthConfig(BaseModel):
-    """ one of a few types of auth configurations"""
-
-class PluginAuthConfigBearer(PluginAuthConfig):
-    """
-    Static bearer token auth for the /plugin api
-    ServiceBearerTokenConfig is used to configure the list of authorized tokens
-    """
-    type: str = "user_http"
-    authorization_type: str = "bearer"
-
-class PluginAuthConfigNone(PluginAuthConfig):
-    """
-    No authentication, anyone can access the /plugin api without auth
-    """
-    type: str = "none"
-
-
 class OpenAIVerificationToken(BaseModel):
     openai: str
 
@@ -39,12 +21,12 @@ class PluginAuthConfigOAuth(BaseModel):
     """
     Plugin auth config for plugin auth_type "oauth"
     """
-    type: str                               = "oauth"
-    client_url: HttpUrl                     = "" #f"https://{HOSTNAME}.gpt-gateway.com/authorize"
-    scope: str                              = ""
-    authorization_url: HttpUrl              = "" #f"https://{HOSTNAME}.gpt-gateway.com/token"
+    type:                       str         = Field("oauth", const=True)
+    client_url:                 HttpUrl     = "" #f"https://{HOSTNAME}.gpt-gateway.com/authorize"
+    scope:                      str         = ""
+    authorization_url:          HttpUrl     = "" #f"https://{HOSTNAME}.gpt-gateway.com/token"
     authorization_content_type: str         = "application/json"
-    verification_tokens: OpenAIVerificationToken
+    verification_tokens:        OpenAIVerificationToken
 
 
 
@@ -58,7 +40,6 @@ class PluginConfig(BaseModel):
     description_for_human: str = f"Search through your collection of '{HOSTNAME}' documents."    
     logo:                  Optional[str] 
     auth_type:             PluginAuthType  = PluginAuthType.none     
-    oauth_config:          Optional[PluginAuthConfigOAuth]             # only used if auth_type == oauth
     
 
 
@@ -102,19 +83,37 @@ class ServiceConfig(BaseModel):
     """
     plugin:       PluginConfig             = PluginConfig()
     embedding:    EmbeddingConfig          = EmbeddingConfig()
+    plugin_auth:  PluginAuthType           = PluginAuthType.bearer    
     auth_tokens:  ServiceBearerTokenConfig = ServiceBearerTokenConfig()
     chunk:        ChunkConfig              = ChunkConfig()
     extract:      ExtractMetadataConfig    = ExtractMetadataConfig()
-
+    oauth_config: Optional[PluginAuthConfigOAuth]
 
  ##
  ## End user-configurable items
  ##
 
+
+class PluginAuthConfigBearer(BaseModel):
+    """
+    Static bearer token auth for the /plugin api
+    ServiceBearerTokenConfig is used to configure the list of authorized tokens
+    """
+    type:               str = Field("user_http", const=True)
+    authorization_type: str = Field("bearer", const=True)
+
+class PluginAuthConfigNone(BaseModel):
+    """
+    No authentication, anyone can access the /plugin api without auth
+    """
+    type: str = Field("none", const=True)
+    
+
 class PluginApiConfig(BaseModel):
     type: str = "openapi"
     url: HttpUrl = f"https://{HOSTNAME}.gpt-gateway.com/.well-known/openapi.yaml"
     has_user_authentication: bool = False
+
     
 class FullPluginConfigV1(BaseModel):
     """
@@ -126,11 +125,11 @@ class FullPluginConfigV1(BaseModel):
     name_for_human:        str 
     description_for_model: str 
     description_for_human: str 
-    auth:     PluginAuthConfig 
-    api:       PluginApiConfig 
-    logo_url:          HttpUrl = f"https://{HOSTNAME}.gpt-gateway.com/.well-known/logo.png"
-    contact_email:         str = "hello@gpt-gateway.com"
-    legal_info_url:    HttpUrl = "https://gpt-gateway/legal"
+    auth:                  Union[PluginAuthConfigBearer, PluginAuthConfigNone, PluginAuthConfigOAuth]                                 
+    api:                   PluginApiConfig 
+    logo_url:              HttpUrl = f"https://{HOSTNAME}.gpt-gateway.com/.well-known/logo.png"
+    contact_email:         str     = "hello@gpt-gateway.com"
+    legal_info_url:        HttpUrl = "https://gpt-gateway/legal"
 
 
 ##  Load Config from Environment
@@ -140,23 +139,34 @@ service_config = ServiceConfig(**json.loads(service_config))
 
 #  convenience variables
 chunk_config = service_config.chunk
-extract_metadata_config = service_config.extract
-auth_tokens = service_config.auth_tokens
-embedding_config = service_config.embedding
+logger.info(chunk_config)
 
-# assemble plugin config
+extract_metadata_config = service_config.extract
+logger.info(extract_metadata_config)
+
+auth_tokens = service_config.auth_tokens
+
+embedding_config = service_config.embedding
+logger.info(embedding_config)
+
+# assemble plugin config 
 
 user_plugin_config = service_config.plugin
 
-if user_plugin_config.auth_type == PluginAuthType.bearer:
+service_config.plugin_auth = PluginAuthType.none  # force to none for now
+
+if service_config.plugin_auth == PluginAuthType.bearer:
     auth = PluginAuthConfigBearer()
     has_user_authentication = True
-elif user_plugin_config.auth_type == PluginAuthType.oauth:
-    auth = PluginAuthConfigOAuth(**user_plugin_config.oauth_config.dict())
+elif service_config.plugin_auth == PluginAuthType.oauth:
+    auth = PluginAuthConfigOAuth(**service_config.oauth_config.dict())
     has_user_authentication = True
-else:
+elif service_config.plugin_auth == PluginAuthType.none:
     auth = PluginAuthConfigNone()
     has_user_authentication = False
+else:
+    logger.error(f"Unknown auth_type: {user_plugin_config.auth_type}")
+    raise ValueError(f"Unknown auth_type: {user_plugin_config.auth_type}")
 
 api = PluginApiConfig(has_user_authentication=has_user_authentication)
 
@@ -166,3 +176,5 @@ plugin_config = FullPluginConfigV1(name_for_model = user_plugin_config.name_for_
                                    description_for_human = user_plugin_config.description_for_human,
                                    auth=auth, 
                                    api=api)
+
+logger.info(plugin_config)
