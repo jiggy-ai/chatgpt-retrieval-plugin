@@ -149,11 +149,11 @@ auth_tokens = service_config.auth_tokens
 embedding_config = service_config.embedding
 logger.info(embedding_config)
 
+plugin_auth = service_config.plugin_auth
+
 # assemble plugin config 
 
 user_plugin_config = service_config.plugin
-
-service_config.plugin_auth = PluginAuthType.none  # force to none for now
 
 if service_config.plugin_auth == PluginAuthType.bearer:
     auth = PluginAuthConfigBearer()

@@ -6,7 +6,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
 from typing import Optional
 from services.extract_metadata import extract_metadata_from_document
-from server.config import HOSTNAME, plugin_config
+from server.config import HOSTNAME, plugin_config, auth_tokens, plugin_auth, PluginAuthType
 from fastapi.openapi.utils import get_openapi
 import yaml
 import json
@@ -25,17 +25,23 @@ from datastore.factory import get_datastore
 from services.file import get_document_from_file
 
 bearer_scheme = HTTPBearer()
-BEARER_TOKEN = os.environ.get("BEARER_TOKEN")
-assert BEARER_TOKEN is not None
-
 
 def validate_token(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
-    if credentials.scheme != "Bearer" or credentials.credentials != BEARER_TOKEN:
+    if credentials.scheme != "Bearer" or credentials.credentials not in auth_tokens:
         raise HTTPException(status_code=401, detail="Invalid or missing token")
     return credentials
 
-
 app = FastAPI(dependencies=[Depends(validate_token)])
+
+if plugin_auth == PluginAuthType.bearer:
+    logger.info("Plugin API: bearer token auth")
+    plugin_dependencies = [Depends(validate_token)]
+elif plugin_auth == PluginAuthType.none:
+    logger.info("Plugin API: NO AUTH")
+    plugin_dependencies = []
+else:
+    logger.error(f"Invalid plugin_auth value {plugin_auth}")
+    raise ValueError(f"Invalid plugin_auth value {plugin_auth}")
 
 # Create a sub-application, in order to access just the query endpoint in an OpenAPI schema, found at http://0.0.0.0:8000/plugin/openapi.json when the app is running locally
 sub_app = FastAPI(
@@ -43,7 +49,7 @@ sub_app = FastAPI(
     description="A retrieval API for querying and filtering documents based on natural language queries and metadata",
     version="1.0.1",
     servers=[{"url": f"https://{HOSTNAME}.gpt-gateway.com/plugin"}],
-    #dependencies=[Depends(validate_token)],
+    dependencies=plugin_dependencies,
 )
 app.mount("/plugin", sub_app)
 
