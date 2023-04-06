@@ -13,22 +13,20 @@ jwks_client = jwt.PyJWKClient(jwks_url)
 
 
 JWT_RSA_PUBLIC_KEY = os.environ['JIGGY_JWT_RSA_PUBLIC_KEY']
-JWT_ISSUER = "Jiggy.AI"
+JIGGY_JWT_ISSUER = "Jiggy.AI"
 
 
 
 def verify_jiggy_api_token(credentials):
     """Perform Jiggy API token verification using PyJWT.  raise HTTPException on error"""
-    # This gets the 'kid' from the passed token credentials
-    signing_key = JWT_RSA_PUBLIC_KEY    
     try:
         payload = jwt.decode(credentials,
-                             signing_key,
+                             JWT_RSA_PUBLIC_KEY,
                              algorithms=ALGORITHMS,
-                             issuer=JWT_ISSUER)
+                             issuer=JIGGY_JWT_ISSUER)
     except Exception as e:
         logger.warning(f'Error decoding token: {e}')        
-        raise HTTPException(status_code=401, detail=str(e))
+        raise HTTPException(status_code=401, detail=f"Invalid api auth token ({e})")
     return payload
 
 
@@ -38,16 +36,9 @@ def verify_auth0_token(credentials):
     # This gets the 'kid' from the passed token
     try:
         signing_key = jwks_client.get_signing_key_from_jwt(credentials).key
-    except jwt.exceptions.PyJWKClientError as error:
-        logger.warning(f'Error getting signing key: {error}')
-        raise HTTPException(status_code=401, detail=str(error))
-    except jwt.exceptions.DecodeError as error:
-        logger.warning(f'Error decoding token: {error}')      
-        raise HTTPException(status_code=401, detail=str(error))
     except Exception as error:
-        logger.warning(f'Error verifying token: {error}')
-        raise HTTPException(status_code=401, detail=str(error))
-    
+        logger.warning(f'Error getting signing key: {error}')
+        raise HTTPException(status_code=401, detail=f"Unknown auth token ({error})")    
     try:
         payload = jwt.decode(credentials,
                              signing_key,
@@ -56,17 +47,19 @@ def verify_auth0_token(credentials):
                              issuer=ISSUER)
     except Exception as e:
         logger.warning(f'Error decoding token: {e}')
-        raise HTTPException(status_code=401, detail="Invalid auth token")
+        raise HTTPException(status_code=401, detail=f"Invalid auth token ({e})")
     return payload
 
 
 
 def verified_sub(token):
     """
-    verify the supplied token and return the associated sub
+    verify the supplied token and return the associated subject id (sub)
     """
-    try:
+    # determine if this is a jiggy api key token or an auth0 token
+    iss = jwt.decode(token.credentials, options={"verify_signature": False})['iss']
+    if iss == JIGGY_JWT_ISSUER:
         return verify_jiggy_api_token(token.credentials)['sub']
-    except:            
+    else:
         return verify_auth0_token(token.credentials)['sub']
 
