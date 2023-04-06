@@ -77,6 +77,12 @@ class ExtractMetadataConfig(BaseModel):
     model:       str     = "gpt-4"
 
 
+class AccessPermission(BaseModel):
+    write: List[str]         # list of token subscribers that can write & read the collection
+    read:  List[str]         # list of token subscribers that can read from the collection
+
+
+
 class ServiceConfig(BaseModel):
     """
     The configuration for a service that is passed to the runtime as json via an environment variable
@@ -88,6 +94,7 @@ class ServiceConfig(BaseModel):
     chunk:        ChunkConfig              = ChunkConfig()
     extract:      ExtractMetadataConfig    = ExtractMetadataConfig()
     oauth_config: Optional[PluginAuthConfigOAuth]
+    access:       AccessPermission
 
  ##
  ## End user-configurable items
@@ -137,7 +144,7 @@ service_config = os.environ.get('SERVICE_CONFIG')
     
 service_config = ServiceConfig(**json.loads(service_config))
 
-#  convenience variables
+# break out into convenience variables for other modules
 chunk_config = service_config.chunk
 logger.info(chunk_config)
 
@@ -150,10 +157,17 @@ embedding_config = service_config.embedding
 logger.info(embedding_config)
 
 plugin_auth = service_config.plugin_auth
+logger.info(plugin_auth)
+
+# subscriber access -- list of auth0 subscriber IDs
+sub_access = service_config.access
+sub_access.read = sub_access.read + sub_access.write   # read access includes write access
+logger.info(f"sub_access: {sub_access}")
+
 
 # assemble plugin config 
 
-user_plugin_config = service_config.plugin
+user_plugin_config = service_config.plugin   # the user-configurable part of the plugin config
 
 if service_config.plugin_auth == PluginAuthType.bearer:
     auth = PluginAuthConfigBearer()

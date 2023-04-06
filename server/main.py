@@ -6,7 +6,8 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
 from typing import Optional
 from services.extract_metadata import extract_metadata_from_document
-from server.config import HOSTNAME, plugin_config, auth_tokens, plugin_auth, PluginAuthType, service_config, ServiceConfig
+from server.config import HOSTNAME, plugin_config, auth_tokens, plugin_auth, PluginAuthType, service_config, ServiceConfig, sub_access
+from server.auth import verified_sub
 from fastapi.openapi.utils import get_openapi
 import yaml
 import json
@@ -26,16 +27,29 @@ from datastore.factory import get_datastore
 from services.file import get_document_from_file
 
 bearer_scheme = HTTPBearer()
-def validate_token(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
+def validate_plugin_token(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
     if credentials.scheme != "Bearer" or credentials.credentials not in auth_tokens.authorized_tokens:
         raise HTTPException(status_code=401, detail="Invalid or missing token")
     return credentials
 
-app = FastAPI(dependencies=[Depends(validate_token)])
+def validate_subscriber_token(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
+    sub = verified_sub(credentials)
+    if sub not in sub_access.read:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    return credentials
+
+def validate_subscriber_write_permission(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
+    sub = verified_sub(credentials)
+    if sub not in sub_access.write:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    return credentials
+
+
+app = FastAPI()
 
 if plugin_auth == PluginAuthType.bearer:
     logger.info("Plugin API: bearer token auth")
-    plugin_dependencies = [Depends(validate_token)]
+    plugin_dependencies = [Depends(validate_plugin_token)]
 elif plugin_auth == PluginAuthType.none:
     logger.info("Plugin API: NO AUTH")
     plugin_dependencies = []
@@ -53,15 +67,15 @@ sub_app = FastAPI(
 )
 app.mount("/plugin", sub_app)
 
-
-
 app.mount("/.well-known", StaticFiles(directory="/code/.well-known"), name="static")
+
 
 
 
 @app.post(
     "/upsert-file",
     response_model=UpsertResponse,
+    dependencies=[Depends(validate_subscriber_write_permission)],    
 )
 async def upsert_file(
     file: UploadFile = File(...),
@@ -82,9 +96,10 @@ async def upsert_file(
 @app.post(
     "/upsert",
     response_model=UpsertResponse,
+    dependencies=[Depends(validate_subscriber_write_permission)],
 )
 async def upsert(
-    request: UpsertRequest = Body(...),
+    request: UpsertRequest = Body(...),        
 ):
     logger.info(f"{len(request.documents)} documents")
     try:
@@ -109,6 +124,7 @@ async def upsert(
 @app.post(
     "/query",
     response_model=QueryResponse,
+    dependencies=[Depends(validate_subscriber_token)],        
 )
 async def query_main(
     request: QueryRequest = Body(...),
@@ -130,6 +146,7 @@ async def query_main(
 @app.get(
     "/docs/{doc_id}",
     response_model=list[DocumentChunk],
+    dependencies=[Depends(validate_subscriber_token)],        
 )
 async def docs(doc_id: str = Path(..., description="The document ID to get" )):
     logger.info(doc_id)
@@ -148,6 +165,7 @@ async def docs(doc_id: str = Path(..., description="The document ID to get" )):
 @app.get(
     "/chunks",
     response_model=list[DocumentChunk],
+    dependencies=[Depends(validate_subscriber_token)],        
 )
 async def chunks(start: Optional[int] = Query(default=0, description="Offset of the first result to return"),
                  limit: Optional[int] = Query(default=10, description="Number of results to return starting from the offset"),
@@ -168,7 +186,7 @@ async def chunks(start: Optional[int] = Query(default=0, description="Offset of 
 
 @sub_app.post(
     "/query",
-    response_model=QueryResponse,
+    response_model=QueryResponse,    
     # NOTE: We are describing the shape of the API endpoint input due to a current limitation in parsing arrays of objects from OpenAPI schemas. This will not be necessary in the future.
     description="Accepts search query objects array each with query and optional filter. Break down complex questions into sub-questions. Refine results by criteria, e.g. time / source, don't do this often. Split queries if ResponseTooLargeError occurs.",
 )
@@ -192,6 +210,7 @@ async def query(
 @app.delete(
     "/delete",
     response_model=DeleteResponse,
+    dependencies=[Depends(validate_subscriber_write_permission)],    
 )
 async def delete(
     request: DeleteRequest = Body(...),
@@ -216,7 +235,10 @@ async def delete(
         logger.error("Error:", e)
         raise HTTPException(status_code=500, detail="Internal Service Error")
 
-@app.get('/config')
+@app.get(
+    '/config',     
+    dependencies=[Depends(validate_subscriber_token)],        
+)
 def get_config() -> ServiceConfig:
     # copy the config and remove the auth tokens
     c = copy.deepcopy(service_config)
