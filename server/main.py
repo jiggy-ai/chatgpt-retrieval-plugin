@@ -6,10 +6,11 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
 from typing import Optional
 from services.extract_metadata import extract_metadata_from_document
-from server.config import HOSTNAME, plugin_config, auth_tokens, plugin_auth, PluginAuthType
+from server.config import HOSTNAME, plugin_config, auth_tokens, plugin_auth, PluginAuthType, service_config, ServiceConfig
 from fastapi.openapi.utils import get_openapi
 import yaml
 import json
+import copy
 
 
 from models.api import (
@@ -25,9 +26,8 @@ from datastore.factory import get_datastore
 from services.file import get_document_from_file
 
 bearer_scheme = HTTPBearer()
-
 def validate_token(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
-    if credentials.scheme != "Bearer" or credentials.credentials not in auth_tokens:
+    if credentials.scheme != "Bearer" or credentials.credentials not in auth_tokens.authorized_tokens:
         raise HTTPException(status_code=401, detail="Invalid or missing token")
     return credentials
 
@@ -215,6 +215,13 @@ async def delete(
     except Exception as e:
         logger.error("Error:", e)
         raise HTTPException(status_code=500, detail="Internal Service Error")
+
+@app.get('/config')
+def get_config() -> ServiceConfig:
+    # copy the config and remove the auth tokens
+    c = copy.deepcopy(service_config)
+    c.auth_tokens = []
+    return c    
 
 
 @app.on_event("startup")
