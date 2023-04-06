@@ -57,7 +57,12 @@ def verified_sub(token):
     verify the supplied token and return the associated subject id (sub)
     """
     # determine if this is a jiggy api key token or an auth0 token
-    iss = jwt.decode(token.credentials, options={"verify_signature": False})['iss']
+    try:
+        iss = jwt.decode(token.credentials, options={"verify_signature": False})['iss']
+    except:
+        logger.error("unable to decode token to determine iss")
+        raise HTTPException(status_code=401, detail=f"Invalid auth token")
+    
     if iss == JIGGY_JWT_ISSUER:
         return verify_jiggy_api_token(token.credentials)['sub']
     else:
