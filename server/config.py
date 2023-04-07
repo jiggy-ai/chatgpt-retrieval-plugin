@@ -136,7 +136,7 @@ class FullPluginConfigV1(BaseModel):
     api:                   PluginApiConfig 
     logo_url:              HttpUrl = f"https://{HOSTNAME}.gpt-gateway.com/.well-known/logo.png"
     contact_email:         str     = "hello@gpt-gateway.com"
-    legal_info_url:        HttpUrl = "https://gpt-gateway/legal"
+    legal_info_url:        HttpUrl = "https://gpt-gateway.com/legal"
 
 
 ##  Load Config from Environment
