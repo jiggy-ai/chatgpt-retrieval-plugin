@@ -187,6 +187,7 @@ async def chunks(start: Optional[int] = Query(default=0, description="Offset of 
 @sub_app.post(
     "/query",
     response_model=QueryResponse,    
+    response_model_exclude_none=True,
     # NOTE: We are describing the shape of the API endpoint input due to a current limitation in parsing arrays of objects from OpenAPI schemas. This will not be necessary in the future.
     description="Accepts search query objects array each with query and optional filter. Break down complex questions into sub-questions. Refine results by criteria, e.g. time / source, don't do this often. Split queries if ResponseTooLargeError occurs.",
 )
