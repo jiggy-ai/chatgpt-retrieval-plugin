@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional, Union
 from enum import Enum
 
@@ -73,7 +73,7 @@ class DocumentMetadataFilter(BaseModel):
 
 
 class Query(BaseModel):
-    query: str
+    query: str = Field(..., min_length=1)
     filter: Optional[DocumentMetadataFilter] = None
     top_k: Optional[int] = 12
 
