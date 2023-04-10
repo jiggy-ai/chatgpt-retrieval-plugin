@@ -29,18 +29,21 @@ from services.file import get_document_from_file
 bearer_scheme = HTTPBearer()
 def validate_plugin_token_bearer(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
     if credentials.scheme != "Bearer" or credentials.credentials not in auth_tokens.authorized_tokens:
+        logger.info(f"Invalid or missing token with scheme {credentials.scheme}")
         raise HTTPException(status_code=401, detail="Invalid or missing token")
     return credentials
 
 def validate_subscriber_token(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
     sub = verified_sub(credentials)
     if sub not in sub_access.read:
+        logger.info(f"Unauthorized subscriber {sub}")
         raise HTTPException(status_code=403, detail="Unauthorized")
     return credentials
 
 def validate_subscriber_write_permission(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
     sub = verified_sub(credentials)
     if sub not in sub_access.write:
+        logger.info(f"Unauthorized subscriber {sub}")
         raise HTTPException(status_code=403, detail="Unauthorized")
     return credentials
 
