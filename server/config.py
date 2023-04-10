@@ -13,21 +13,34 @@ class PluginAuthType(Enum):
     bearer = "bearer"
     none   = "none"
     oauth  = "oauth"
+
     
 class OpenAIVerificationToken(BaseModel):
     openai: str
 
-class PluginAuthConfigOAuth(BaseModel):
+class OpenAIPluginAuthConfigOAuth(BaseModel):
     """
-    Plugin auth config for plugin auth_type "oauth"
+    The Plugin Oauth configuration as it is presented in the ai-plugin.json 
     """
     type:                       str         = Field("oauth", const=True)
-    client_url:                 HttpUrl     = "" #f"https://{HOSTNAME}.gpt-gateway.com/authorize"
-    scope:                      str         = ""
-    authorization_url:          HttpUrl     = "" #f"https://{HOSTNAME}.gpt-gateway.com/token"
-    authorization_content_type: str         = "application/json"
-    verification_tokens:        OpenAIVerificationToken
+    client_url:                 HttpUrl     = Field(description="ChatGPT will direct the user’s browser to this url to log in to the plugin")
+    authorization_url:          HttpUrl     = Field(description="After successful login ChatGPT will complete the OAuth flow by making a POST request to this URL")
+    scope:                      str         = Field(description="The scope used for the OAuth flow")    
+    authorization_content_type: str         = Field("application/json", const=True)
+    verification_tokens:        OpenAIVerificationToken = Field(description="The verification token to send to OpenAI for the plugin")
 
+
+class PluginAuthConfigOAuth(BaseModel):
+    """
+    The Plugin Oauth configuration as managed by GPT-Gateway
+    """    
+    client_url:                 HttpUrl     = Field(description="ChatGPT will direct the user’s browser to this url to log in to the plugin")
+    authorization_url:          HttpUrl     = Field(description="After successful login ChatGPT will complete the OAuth flow by making a POST request to this URL")
+    scope:                      str         = Field(description="The scope used for the OAuth flow")
+    client_id:                  str         = Field(unique=True, index=True, description="The client id to send to OpenAI for the plugin")
+    client_secret:              str         = Field(description="The client secret to send to OpenAI for the plugin")
+    openai_verification_token:  str         = Field(description="The verification token specified by OpenAI to configure in the plugin")
+    
 
 
 class PluginConfig(BaseModel): 
@@ -122,17 +135,17 @@ class PluginApiConfig(BaseModel):
     has_user_authentication: bool = False
 
     
-class FullPluginConfigV1(BaseModel):
+class AIPluginConfigV1(BaseModel):
     """
-    Full plugin configuration, only partially exposed to the user
-    Used to generate .well-known/ai-plugin.json
+    Full plugin configuration 
+    used to generate .well-known/ai-plugin.json
     """
     schema_version:        str = Field("v1", const=True)
     name_for_model:        str 
     name_for_human:        str 
     description_for_model: str 
     description_for_human: str 
-    auth:                  Union[PluginAuthConfigBearer, PluginAuthConfigNone, PluginAuthConfigOAuth]                                 
+    auth:                  Union[PluginAuthConfigBearer, PluginAuthConfigNone, OpenAIPluginAuthConfigOAuth] 
     api:                   PluginApiConfig 
     logo_url:              HttpUrl = f"https://{HOSTNAME}.gpt-gateway.com/.well-known/logo.png"
     contact_email:         str     = "hello@gpt-gateway.com"
@@ -159,13 +172,15 @@ logger.info(embedding_config)
 plugin_auth = service_config.plugin_auth
 logger.info(plugin_auth)
 
+ouath_config = service_config.oauth_config
+
 # subscriber access -- list of auth0 subscriber IDs
 sub_access = service_config.access
 sub_access.read = sub_access.read + sub_access.write   # read access includes write access
 logger.info(f"sub_access: {sub_access}")
 
 
-# assemble plugin config 
+# assemble ai-plugin.json config 
 
 user_plugin_config = service_config.plugin   # the user-configurable part of the plugin config
 
@@ -173,7 +188,9 @@ if service_config.plugin_auth == PluginAuthType.bearer:
     auth = PluginAuthConfigBearer()
     has_user_authentication = True
 elif service_config.plugin_auth == PluginAuthType.oauth:
-    auth = PluginAuthConfigOAuth(**service_config.oauth_config.dict())
+    vtoken = OpenAIVerificationToken(openai=service_config.oauth_config.openai_verification_token)
+    auth = OpenAIPluginAuthConfigOAuth(**service_config.oauth_config.dict(), verification_tokens=vtoken)
+    logger.info(auth)
     has_user_authentication = True
 elif service_config.plugin_auth == PluginAuthType.none:
     auth = PluginAuthConfigNone()
@@ -184,11 +201,11 @@ else:
 
 api = PluginApiConfig(has_user_authentication=has_user_authentication)
 
-plugin_config = FullPluginConfigV1(name_for_model = user_plugin_config.name_for_model,
-                                   name_for_human = user_plugin_config.name_for_human,
-                                   description_for_model = user_plugin_config.description_for_model,
-                                   description_for_human = user_plugin_config.description_for_human,
-                                   auth=auth, 
-                                   api=api)
+plugin_config = AIPluginConfigV1(name_for_model = user_plugin_config.name_for_model,
+                                 name_for_human = user_plugin_config.name_for_human,
+                                 description_for_model = user_plugin_config.description_for_model,
+                                 description_for_human = user_plugin_config.description_for_human,
+                                 auth=auth, 
+                                 api=api)
 
 logger.info(plugin_config)

@@ -6,6 +6,7 @@ import os
 DOMAIN = "auth.gpt-gateway.com"
 API_AUDIENCE = "https://api.gpt-gateway.com"
 ALGORITHMS = ["RS256"]
+#ISSUER = "https://gpt-gateway.us.auth0.com/"
 ISSUER = "https://"+DOMAIN+"/"
 
 jwks_url = 'https://%s/.well-known/jwks.json' % DOMAIN
@@ -37,7 +38,7 @@ def verify_auth0_token(credentials):
     try:
         signing_key = jwks_client.get_signing_key_from_jwt(credentials).key
     except Exception as error:
-        logger.warning(f'Error getting signing key: {error}')
+        logger.error(f'Error getting signing key: {error}')
         raise HTTPException(status_code=401, detail=f"Unknown auth token ({error})")    
     try:
         payload = jwt.decode(credentials,
@@ -45,6 +46,7 @@ def verify_auth0_token(credentials):
                              algorithms=ALGORITHMS,
                              audience=API_AUDIENCE,
                              issuer=ISSUER)
+        
     except Exception as e:
         logger.warning(f'Error decoding token: {e}')
         raise HTTPException(status_code=401, detail=f"Invalid auth token ({e})")
@@ -58,7 +60,7 @@ def verified_sub(token):
     """
     # determine if this is a jiggy api key token or an auth0 token
     try:
-        iss = jwt.decode(token.credentials, options={"verify_signature": False})['iss']
+        iss = jwt.decode(token.credentials, options={"verify_signature": False , 'verify_iss':False}).get('iss')
     except:
         logger.error("unable to decode token to determine iss")
         raise HTTPException(status_code=401, detail=f"Invalid auth token")

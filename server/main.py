@@ -27,7 +27,7 @@ from datastore.factory import get_datastore
 from services.file import get_document_from_file
 
 bearer_scheme = HTTPBearer()
-def validate_plugin_token(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
+def validate_plugin_token_bearer(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
     if credentials.scheme != "Bearer" or credentials.credentials not in auth_tokens.authorized_tokens:
         raise HTTPException(status_code=401, detail="Invalid or missing token")
     return credentials
@@ -49,10 +49,13 @@ app = FastAPI()
 
 if plugin_auth == PluginAuthType.bearer:
     logger.info("Plugin API: bearer token auth")
-    plugin_dependencies = [Depends(validate_plugin_token)]
+    plugin_dependencies = [Depends(validate_plugin_token_bearer)]
 elif plugin_auth == PluginAuthType.none:
-    logger.info("Plugin API: NO AUTH")
+    logger.info("Plugin API: Open (No auth)")
     plugin_dependencies = []
+elif plugin_auth == PluginAuthType.oauth:    
+    logger.info("Plugin API: Oauth")
+    plugin_dependencies = [Depends(validate_subscriber_token)]
 else:
     logger.error(f"Invalid plugin_auth value {plugin_auth}")
     raise ValueError(f"Invalid plugin_auth value {plugin_auth}")
@@ -246,6 +249,8 @@ def get_config() -> ServiceConfig:
     c.auth_tokens = []
     return c    
 
+
+import server.oauth_proxy    # add additional endpoints post app creation
 
 @app.on_event("startup")
 async def startup():
