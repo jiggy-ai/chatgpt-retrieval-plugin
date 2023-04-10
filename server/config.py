@@ -172,7 +172,7 @@ logger.info(embedding_config)
 plugin_auth = service_config.plugin_auth
 logger.info(plugin_auth)
 
-ouath_config = service_config.oauth_config
+oauth_config = service_config.oauth_config
 
 # subscriber access -- list of auth0 subscriber IDs
 sub_access = service_config.access

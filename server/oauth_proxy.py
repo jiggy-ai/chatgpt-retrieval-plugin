@@ -1,14 +1,17 @@
 from loguru import logger
 from fastapi import HTTPException
-from server.config import HOSTNAME
+from server.config import HOSTNAME, sub_access, oauth_config
 from fastapi import Request
 from fastapi.responses import RedirectResponse
 from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
 import httpx
 from pydantic import BaseModel
 from server.main import app
-from server.config import ouath_config
+from server.auth import verified_sub
+from server.config import auth_tokens
 import os
+import base64
+import json
 
 GPTG_OAUTH_CLIENT_ID     = os.environ['GPTG_AUTH_CHATGPT_CLIENT_ID']
 GPTG_OAUTH_CLIENT_SECRET = os.environ['GPTG_AUTH_CHATGPT_CLIENT_SECRET']
@@ -42,7 +45,7 @@ def replace_redirect_uri(original_url: str) -> str:
         raise HTTPException(status_code=400, detail="No client_id in query_params")
 
     # validate the client_id
-    if ouath_config.client_id != query_params['client_id'][0]:
+    if oauth_config.client_id != query_params['client_id'][0]:
         logger.warning(f"Invalid client_id {query_params['client_id'][0]}")
         raise HTTPException(status_code=400, detail="Invalid client_id")
 
@@ -91,11 +94,11 @@ async def token(request:       Request,
         logger.warning(f"redirect_uri doesn't match: {token_request.redirect_uri} != {original_redirect_uri}")
         raise HTTPException(status_code=400, detail="redirect_uri mismatch")
 
-    if token_request.client_id != ouath_config.client_id:
+    if token_request.client_id != oauth_config.client_id:
         logger.warning(f"client_id doesn't match: {token_request.client_id} != {GPTG_OAUTH_CLIENT_ID}")
         raise HTTPException(status_code=400, detail="client_id mismatch")
     
-    if token_request.client_secret != ouath_config.client_secret:
+    if token_request.client_secret != oauth_config.client_secret:
         logger.warning(f"client_secret doesn't match: {token_request.client_secret} != {GPTG_OAUTH_CLIENT_SECRET}")
         raise HTTPException(status_code=400, detail="client_secret mismatch")
 
@@ -108,6 +111,12 @@ async def token(request:       Request,
         response = await client.post(GPTG_OAUTH_AUTHORIZE_URL, json=token_request.dict())
     if response.status_code != 200:
         raise HTTPException(status_code=response.status_code, detail=response.text)
-    return response.json()
+    response_json = response.json()
+    # get sub from access_token and confirm sub has access to this plugin
+    # will transition to audience claim in the future
+    sub = json.loads(base64.b64decode(response_json['access_token'].split(".")[1])).get('sub')
+    if sub not in sub_access.read:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    return response_json
 
 
