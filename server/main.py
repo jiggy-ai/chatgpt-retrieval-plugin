@@ -1,5 +1,5 @@
 from loguru import logger
-import os
+import sys
 import uvicorn
 from fastapi import FastAPI, File, HTTPException, Depends, Body, UploadFile, Query, Path
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -25,6 +25,10 @@ from models.api import (
 )
 from datastore.factory import get_datastore
 from services.file import get_document_from_file
+
+
+logger.remove()
+logger.add(sys.stderr, level="INFO", format="{level}: [{name}:{function}:{line}] {message}")
 
 bearer_scheme = HTTPBearer()
 def validate_plugin_token_bearer(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
@@ -259,13 +263,13 @@ import server.oauth_proxy    # add additional endpoints post app creation
 async def startup():
     global datastore
     datastore = await get_datastore()
-    logger.info("Startup")
+    logger.info("Startup complete")
     
 @app.on_event("shutdown")
 async def shutdown_event():
-    # Perform cleanup tasks here
     logger.info("Shutdown")
-    
+    datastore.shutdown()
+    logger.info("Shutdown complete")
     
 # update .well-known specs to match current config
 from pydantic.networks import AnyUrl, url_regex

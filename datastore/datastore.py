@@ -113,3 +113,10 @@ class DataStore(ABC):
         Returns whether the operation was successful.
         """
         raise NotImplementedError
+
+    @abstractmethod
+    def shutdown(self):
+        """
+        prepare for shutdown    
+        """
+        raise NotImplementedError

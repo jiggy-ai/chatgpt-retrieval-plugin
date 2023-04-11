@@ -207,3 +207,13 @@ class HnsqliteDataStore(DataStore):
                     hnsqlite_metadata[field] = value
 
         return hnsqlite_metadata
+
+    def shutdown(self):
+        """
+        prepare for shutdown    
+        """
+        logger.info('save index')
+        collection = self.collection
+        self.collection = None        
+        collection.save_index()
+        
