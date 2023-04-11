@@ -75,7 +75,7 @@ class DocumentMetadataFilter(BaseModel):
 class Query(BaseModel):
     query: str = Field(..., min_length=1)
     filter: Optional[DocumentMetadataFilter] = None
-    top_k: Optional[int] = 12
+    top_k: Optional[int] = 7
 
 class QueryWithEmbedding(Query):
     embedding: List[float]
