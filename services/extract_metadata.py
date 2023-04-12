@@ -7,7 +7,7 @@ from server.config import extract_metadata_config
 
 def extract_metadata_from_document(text: str) -> Dict[str, str]:
 
-    config = extract_metadata_config.dict()
+    config = json.loads(extract_metadata_config.json())
     model = config.pop("model")    
     allowed_keys = {k for k, v in config.items() if v}
     if not allowed_keys:

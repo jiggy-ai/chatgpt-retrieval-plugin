@@ -99,7 +99,8 @@ async def upsert_file(
         logger.error(e)
         raise HTTPException(status_code=400, detail=str(e))            
     except Exception as e:
-        logger.error("Error:", e)
+        logger.exception(e)
+        #logger.error("Error:", e)
         raise HTTPException(status_code=500, detail=f"str({e})")
 
 
