@@ -26,6 +26,7 @@ from models.api import (
 from datastore.factory import get_datastore
 from services.file import get_document_from_file
 
+app = FastAPI()
 
 logger.remove()
 logger.add(sys.stderr, level="INFO", format="{level}: [{name}:{function}:{line}] {message}")
@@ -52,7 +53,6 @@ def validate_subscriber_write_permission(credentials: HTTPAuthorizationCredentia
     return credentials
 
 
-app = FastAPI()
 
 if plugin_auth == PluginAuthType.bearer:
     logger.info("Plugin API: bearer token auth")
@@ -285,16 +285,3 @@ with open("/code/.well-known/ai-plugin.json", "w") as output_file:
     output_file.write(json.dumps(plugin_config.dict(), indent=4, sort_keys=False))
 
 
-#def start():
-#    logger.info("Start")
-#    uvicorn.run("server.main:app", host="0.0.0.0", port=8000, reload=True)
-#    logger.info("Start done")
-
-if __name__ == "__main__":
-    logger.info("Start")
-    uvicorn.run(app,
-                host="0.0.0.0",
-                port=8080,
-                log_level="debug",
-                reload=False)
-    logger.info("uvicorn done")

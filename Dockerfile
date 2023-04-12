@@ -35,4 +35,4 @@ RUN pip3 install -r  /code/requirements.txt
 COPY . /code/
 
 ENV PYTHONPATH "${PYTHONPATH}:/code"
-CMD ["python3", "server/main.py"]
+CMD ["uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "8080"]
