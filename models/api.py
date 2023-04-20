@@ -34,3 +34,5 @@ class DeleteRequest(BaseModel):
 class DeleteResponse(BaseModel):
     success: bool
 
+class Accounting(BaseModel):
+    chunk_count: int

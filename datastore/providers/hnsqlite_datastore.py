@@ -106,11 +106,6 @@ class HnsqliteDataStore(DataStore):
         return results
     
         
-    def count(self) -> int:
-        """
-        Returns the number of vectors in the index.
-        """
-        return self.collection.count()
 
     async def _doc(self, doc_id) -> List[DocumentChunk]:
         """
@@ -207,7 +202,13 @@ class HnsqliteDataStore(DataStore):
                     hnsqlite_metadata[field] = value
 
         return hnsqlite_metadata
-
+    
+    async def chunk_count(self) -> int:
+        """
+        Returns the number of chunks in the datastore
+        """
+        return self.collection.count()
+    
     def shutdown(self):
         """
         prepare for shutdown    

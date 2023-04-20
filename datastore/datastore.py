@@ -85,7 +85,13 @@ class DataStore(ABC):
         """
         raise NotImplementedError
 
-
+    @abstractmethod
+    async def chunk_count(self) -> int:
+        """
+        Returns the number of chunks in the datastore
+        """
+        return NotImplementedError
+        
     async def doc(self, doc_id) -> List[DocumentChunk]:
         """
         Returns a list of document chunks from the datastore based on the doc_id

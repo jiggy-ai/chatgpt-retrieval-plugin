@@ -22,6 +22,7 @@ from models.api import (
     UpsertRequest,
     UpsertResponse,
     DocumentChunk,
+    Accounting
 )
 from datastore.factory import get_datastore
 from services.file import get_document_from_file
@@ -193,7 +194,8 @@ async def chunks(start: Optional[int] = Query(default=0, description="Offset of 
         raise HTTPException(status_code=500, detail="Internal Service Error")
 
 
-
+@sub_app.get('/ping', include_in_schema=False)
+async def ping() -> str: return "pong"
 
 @sub_app.post(
     "/query",
@@ -256,6 +258,15 @@ def get_config() -> ServiceConfig:
     c = copy.deepcopy(service_config)
     c.auth_tokens = []
     return c    
+
+
+
+@app.get(
+    '/accounting',     
+    dependencies=[Depends(validate_subscriber_token)],        
+)
+def accounting() -> Accounting:
+    return Accounting(chunk_count = datastore.chunk_count()) 
 
 
 import server.oauth_proxy    # add additional endpoints post app creation
