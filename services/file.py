@@ -8,9 +8,10 @@ from PyPDF2 import PdfReader
 import docx2txt
 import csv
 import pptx
+import json
 
 from models.models import Document, DocumentMetadata, Source
-from services.extract_metadata import extract_metadata_from_document
+from services.extract_metadata import extract_metadata_from_document, csv_has_header
 import subprocess       
 
 
@@ -68,6 +69,20 @@ excel_mimetypes_to_extensions = {
     "application/vnd.ms-excel.addin.macroEnabled.12": "xlam",
 }
 
+def csv_fp_to_text(file) -> str:
+    extracted_text = ""
+    decoded_buffer = [line.decode("utf-8") for line in file]
+    if csv_has_header(decoded_buffer[:20]): 
+        logger.info("reading csv with header")
+        reader = csv.DictReader(decoded_buffer)
+        for row in reader:
+            extracted_text += json.dumps(row) + "\n"
+    else:
+        logger.info("reading csv without header")
+        reader = csv.reader(decoded_buffer)
+        for row in reader:
+            extracted_text += " ".join(row) + "\n"    
+    return extracted_text
 
 
 def extract_text_from_file(file: BufferedReader, mimetype: str) -> str:
@@ -78,18 +93,6 @@ def extract_text_from_file(file: BufferedReader, mimetype: str) -> str:
     elif mimetype == "text/plain" or mimetype == "text/markdown":
         # Read text from plain text file
         extracted_text = file.read().decode("utf-8")
-    elif mimetype in excel_mimetypes_to_extensions:
-        input_file = f"/tmp/tmp.{excel_mimetypes_to_extensions[mimetype]}"
-        open(input_file, 'wb').write(file.read())
-        output_folder = "/tmp/"
-        command = f"libreoffice --headless --convert-to csv --outdir {output_folder} {input_file}"
-        try:
-            subprocess.run(command, shell=True, check=True)
-        except:
-            raise ValueError("Unable to convert excel to csv.")      
-        extracted_text = open(f"{output_folder}/tmp.csv", 'r').read()
-        os.unlink(f"{output_folder}/tmp.csv")
-        os.unlink(input_file)
     elif (mimetype == "application/msword"):
         input_file = "/tmp/tmp.doc"
         open(input_file, 'wb').write(file.read())
@@ -109,13 +112,21 @@ def extract_text_from_file(file: BufferedReader, mimetype: str) -> str:
     ):
         # Extract text from docx using docx2txt
         extracted_text = docx2txt.process(file)
+    elif mimetype in excel_mimetypes_to_extensions:
+        input_file = f"/tmp/tmp.{excel_mimetypes_to_extensions[mimetype]}"
+        open(input_file, 'wb').write(file.read())
+        output_folder = "/tmp/"
+        command = f"libreoffice --headless --convert-to csv --outdir {output_folder} {input_file}"
+        try:
+            subprocess.run(command, shell=True, check=True)
+        except:
+            raise ValueError("Unable to convert excel to csv.")      
+        with open(f"{output_folder}/tmp.csv", 'rb') as csv_file:
+            extracted_text = csv_fp_to_text(csv_file)
+        os.unlink(f"{output_folder}/tmp.csv")
+        os.unlink(input_file)
     elif mimetype == "text/csv":
-        # Extract text from csv using csv module
-        extracted_text = ""
-        decoded_buffer = (line.decode("utf-8") for line in file)
-        reader = csv.reader(decoded_buffer)
-        for row in reader:
-            extracted_text += " ".join(row) + "\n"
+        extracted_text = csv_fp_to_text(file)
     elif (
         mimetype
         == "application/vnd.openxmlformats-officedocument.presentationml.presentation"
