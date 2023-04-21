@@ -11,6 +11,7 @@ import pptx
 
 from models.models import Document, DocumentMetadata, Source
 from services.extract_metadata import extract_metadata_from_document
+import subprocess       
 
 
 async def get_document_from_file(file: UploadFile) -> Document:
@@ -55,6 +56,18 @@ excel_mimetypes = ["application/vnd.ms-excel",                                  
                    "application/vnd.ms-excel.template.macroEnabled.12",                  # Excel Macro-Enabled Template (.xltm)
                    "application/vnd.ms-excel.addin.macroEnabled.12"]                     # Excel Add-In (.xlam)
 
+# dictionary of excel mimetypes and their corresponding extensions
+
+excel_mimetypes_to_extensions = {
+    "application/vnd.ms-excel": ".xls",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+    "application/vnd.ms-excel.sheet.macroEnabled.12": "xlsm",
+    "application/vnd.ms-excel.sheet.binary.macroEnabled.12": "xlsb",
+    "application/vnd.ms-excel.template.macroEnabled.12": "xlt",
+    "application/vnd.ms-excel.template.macroEnabled.12": "xltm",
+    "application/vnd.ms-excel.addin.macroEnabled.12": "xlam",
+}
+
 
 
 def extract_text_from_file(file: BufferedReader, mimetype: str) -> str:
@@ -65,14 +78,21 @@ def extract_text_from_file(file: BufferedReader, mimetype: str) -> str:
     elif mimetype == "text/plain" or mimetype == "text/markdown":
         # Read text from plain text file
         extracted_text = file.read().decode("utf-8")
-    elif mimetype in excel_mimetypes:
-        # really want the original filename here not a fp since not clear if the file suffix is in play
-        # libreoffice --headless --convert-to csv --outdir /home/user/documents /home/user/documents/input_file.xlsm
-        raise ValueError("Excel files are not yet supported.")
+    elif mimetype in excel_mimetypes_to_extensions:
+        input_file = f"/tmp/tmp.{excel_mimetypes_to_extensions[mimetype]}"
+        open(input_file, 'wb').write(file.read())
+        output_folder = "/tmp/"
+        command = f"libreoffice --headless --convert-to csv --outdir {output_folder} {input_file}"
+        try:
+            subprocess.run(command, shell=True, check=True)
+        except:
+            raise ValueError("Unable to convert excel to csv.")      
+        extracted_text = open(f"{output_folder}/tmp.csv", 'r').read()
+        os.unlink(f"{output_folder}/tmp.csv")
+        os.unlink(input_file)
     elif (mimetype == "application/msword"):
         input_file = "/tmp/tmp.doc"
         open(input_file, 'wb').write(file.read())
-        import subprocess       
         output_folder = "/tmp/"
         output_format = "docx:\"Office Open XML Text\""
         command = f"libreoffice --headless --convert-to {output_format} --outdir {output_folder} {input_file}"
