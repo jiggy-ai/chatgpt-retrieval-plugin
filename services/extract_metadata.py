@@ -13,6 +13,9 @@ def extract_metadata_from_document(text: str) -> Dict[str, str]:
     if not allowed_keys:
         logger.info("No metadata extraction is enabled")
         return {}  # no extraction is enabled
+
+    # add language to allowed keys
+    allowed_keys.add("language")
     
     sources = Source.__members__.keys()
     sources_string = ", ".join(sources)
@@ -26,7 +29,7 @@ def extract_metadata_from_document(text: str) -> Dict[str, str]:
             - created_at: string (or None if unknown) of the data in the format YYYY-MM-DD that the content was created if it appears in the content.  
             - language: string, the 2 character ISO 639-1 language code of the primary language of the content.
             Please respond with JSON output containing the extracted metadata in key value pairs. 
-            The keys for the metadata are "created_at", "author", and "title".
+            The keys for the metadata are "title", "author", "created_at", and "language".
             If you don't find a metadata field, you don't need to include it.  Do not use "unknown", "not found" or similar as output values.
             """,
         },

@@ -3,7 +3,7 @@ from typing import Dict, List, Optional, Tuple
 import uuid
 from models.models import Document, DocumentChunk, DocumentChunkMetadata
 from server.config import chunk_config
-
+from services.chunk_sbd import chunk_text_pysbd
 import tiktoken
 
 from services.openai import get_embeddings
@@ -21,6 +21,9 @@ MIN_CHUNK_SIZE_CHARS      = chunk_config.min_chunk_size_chars       # The minimu
 MIN_CHUNK_LENGTH_TO_EMBED = chunk_config.min_chunk_length_to_embed  # Discard chunks shorter than this
 EMBEDDINGS_BATCH_SIZE     = chunk_config.embeddings_batch_size      # The number of embeddings to request at a time
 MAX_NUM_CHUNKS            = chunk_config.max_num_chunks             # The maximum number of chunks to generate from a text
+
+
+
 
 
 def get_text_chunks(text: str, chunk_token_size: Optional[int]) -> List[str]:
@@ -125,8 +128,17 @@ def create_document_chunks(
     doc_id = doc.id or str(uuid.uuid4())
 
     # Split the document text into chunks
-    text_chunks = get_text_chunks(doc.text, chunk_token_size)
-
+    # text_chunks = get_text_chunks(doc.text, chunk_token_size)
+    chunk_token_size = chunk_token_size or CHUNK_SIZE
+    logger.info(f"Splitting {doc.mimetype} '{doc.metadata.language}' language document into chunks of size {chunk_token_size}")
+    text_chunks =  chunk_text_pysbd(text           = doc.text,
+                                    target_tokens  = chunk_token_size,                                    
+                                    tokenizer_func = tokenizer.encode,
+                                    language       = doc.metadata.language,
+                                    pdf            = doc.mimetype == 'application/pdf')
+    text_chunks = list(text_chunks)
+    logger.info(f"Split document {doc_id} into {len(text_chunks)} chunks")
+                
     metadata = (
         DocumentChunkMetadata(**doc.metadata.__dict__)
         if doc.metadata is not None

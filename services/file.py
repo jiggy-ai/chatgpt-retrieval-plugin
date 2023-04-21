@@ -9,14 +9,15 @@ import docx2txt
 import csv
 import pptx
 import json
-
 from models.models import Document, DocumentMetadata, Source
 from services.extract_metadata import extract_metadata_from_document, csv_has_header
 import subprocess       
 
 
 async def get_document_from_file(file: UploadFile) -> Document:
-    extracted_text = await extract_text_from_form_file(file)
+    extracted_text, mimetype = await extract_text_from_form_file(file)
+
+
     extracted_metadata = extract_metadata_from_document(extracted_text)
     logger.info(f"Extracted metadata: {extracted_metadata}")
 
@@ -24,7 +25,7 @@ async def get_document_from_file(file: UploadFile) -> Document:
                                 source_id = file.filename, 
                                 **extracted_metadata)
     logger.info(metadata)
-    doc = Document(text=extracted_text, metadata=metadata)
+    doc = Document(text=extracted_text, metadata=metadata, mimetype=mimetype)
     
     return doc
 
@@ -175,4 +176,4 @@ async def extract_text_from_form_file(file: UploadFile):
     # remove file from temp location
     os.remove(temp_file_path)
 
-    return extracted_text
+    return extracted_text, mimetype

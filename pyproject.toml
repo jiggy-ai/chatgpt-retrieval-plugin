@@ -30,7 +30,7 @@ hnsqlite = "^0.2.0"
 pyyaml = "^6.0"
 pyjwt = {extras = ["crypto"], version = "^2.6.0"}
 gpt-gateway = "^0.0.3"
-
+pysbd = "^0.3.4"
 
 [tool.poetry.scripts]
 start = "server.main:start"

@@ -1830,6 +1830,17 @@ full = ["Pillow", "PyCryptodome"]
 image = ["Pillow"]
 
 [[package]]
+name = "pysbd"
+version = "0.3.4"
+description = "pysbd (Python Sentence Boundary Disambiguation) is a rule-based sentence boundary detection that works out-of-the-box across many languages."
+category = "main"
+optional = false
+python-versions = ">=3"
+files = [
+    {file = "pysbd-0.3.4-py3-none-any.whl", hash = "sha256:cd838939b7b0b185fcf86b0baf6636667dfb6e474743beeff878e9f42e022953"},
+]
+
+[[package]]
 name = "pytest"
 version = "7.2.2"
 description = "pytest: simple powerful testing with Python"
@@ -2675,4 +2686,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "61bf9bacfddde895e1846d24089156f23d537526616bc553865e61c72b4a72b9"
+content-hash = "0d986a6adef721efe97ffa2976bce1a5f7a6f45b44324c1db24d7294c00a671d"

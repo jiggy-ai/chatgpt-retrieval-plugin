@@ -18,7 +18,7 @@ class DocumentMetadata(BaseModel):
     author: Union[str, List[str]] = None
     title: Optional[str] = None
     description: Optional[str] = None
-    
+    language: Optional[str] = None
 
 class DocumentChunkMetadata(DocumentMetadata):
     document_id: Optional[str] = None
@@ -55,7 +55,7 @@ class Document(BaseModel):
     id: Optional[str] = None
     text: str
     metadata: Optional[DocumentMetadata] = None
-
+    mimetype: Optional[str] = None
 
 class DocumentWithChunks(Document):
     chunks: List[DocumentChunk]
