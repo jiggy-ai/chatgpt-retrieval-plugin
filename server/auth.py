@@ -3,7 +3,7 @@ from fastapi import HTTPException
 import jwt
 import os
 
-DOMAIN = "auth.gpt-gateway.com"
+DOMAIN = "auth.jiggy.ai"
 API_AUDIENCE = "https://api.gpt-gateway.com"
 ALGORITHMS = ["RS256"]
 ISSUER = "https://"+DOMAIN+"/"

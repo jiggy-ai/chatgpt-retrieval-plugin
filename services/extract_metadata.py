@@ -26,7 +26,7 @@ def extract_metadata_from_document(text: str) -> Dict[str, str]:
             Given the beginning of some content from a user, please extract the following metadata:
             - title: string (or None if unknown) of the title of the content.  If no title is specified output a good short title for the content.            
             - author: string (or None if unknown) of the author of the content.
-            - created_at: string (or None if unknown) of the data in the format YYYY-MM-DD that the content was created if it appears in the content.  
+            - created_at: string (or None if unknown) The date in the format YYYY-MM-DD that the content was created if it appears in the content.  
             - language: string, the 2 character ISO 639-1 language code of the primary language of the content.
             Please respond with JSON output containing the extracted metadata in key value pairs. 
             The keys for the metadata are "title", "author", "created_at", and "language".
