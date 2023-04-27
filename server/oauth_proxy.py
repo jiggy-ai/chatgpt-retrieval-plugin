@@ -15,9 +15,9 @@ import json
 
 GPTG_OAUTH_CLIENT_ID     = os.environ['GPTG_AUTH_CHATGPT_CLIENT_ID']
 GPTG_OAUTH_CLIENT_SECRET = os.environ['GPTG_AUTH_CHATGPT_CLIENT_SECRET']
-AUTH_HOSTNAME            = 'auth.gpt-gateway.com'
+AUTH_HOSTNAME            = 'auth.jiggy.ai'
 GPTG_OAUTH_AUTHORIZE_URL = f"https://{AUTH_HOSTNAME}/oauth/token"
-GTPG_REDIRECT_URL        = f"https://{HOSTNAME}.gpt-gateway.com/oauth/callback"
+GTPG_REDIRECT_URL        = f"https://{HOSTNAME}.plugin.jiggy.ai/oauth/callback"
 
 original_redirect_uri = ""
 

@@ -59,7 +59,7 @@ class PluginAuthConfigNone(BaseModel):
 
 class PluginApiConfig(BaseModel):
     type: str = "openapi"
-    url: HttpUrl = f"https://{HOSTNAME}.gpt-gateway.com/.well-known/openapi.yaml"
+    url: HttpUrl = f"https://{HOSTNAME}.plugin.jiggy.ai/.well-known/openapi.yaml"
     has_user_authentication: bool = False
 
     
@@ -75,9 +75,9 @@ class AIPluginConfigV1(BaseModel):
     description_for_human: str 
     auth:                  Union[PluginAuthConfigBearer, PluginAuthConfigNone, OpenAIPluginAuthConfigOAuth] 
     api:                   PluginApiConfig 
-    logo_url:              HttpUrl = f"https://{HOSTNAME}.gpt-gateway.com/.well-known/logo.png"
-    contact_email:         str     = "hello@gpt-gateway.com"
-    legal_info_url:        HttpUrl = "https://gpt-gateway.com/legal"
+    logo_url:              HttpUrl = f"https://{HOSTNAME}.plugin.jiggy.ai/.well-known/logo.png"
+    contact_email:         str     = "jiggybase@jiggy.ai"
+    legal_info_url:        HttpUrl = "https://jiggy.ai/legal"
 
 
 ##  Load Config from Environment
@@ -134,7 +134,7 @@ plugin_config = AIPluginConfigV1(name_for_model = user_plugin_config.name_for_mo
                                  name_for_human = user_plugin_config.name_for_human,
                                  description_for_model = user_plugin_config.description_for_model,
                                  description_for_human = user_plugin_config.description_for_human,
-                                 logo_url = user_plugin_config.logo_url if user_plugin_config.logo_url else f"https://{HOSTNAME}.gpt-gateway.com/.well-known/logo.png",
+                                 logo_url = user_plugin_config.logo_url if user_plugin_config.logo_url else f"https://{HOSTNAME}.plugin.jiggy.ai/.well-known/logo.png",
                                  auth=auth, 
                                  api=api)
 

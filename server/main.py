@@ -73,7 +73,7 @@ sub_app = FastAPI(
     title="Retrieval Plugin API",
     description="A retrieval API for querying and filtering documents based on natural language queries and metadata",
     version="1.0.1",
-    servers=[{"url": f"https://{HOSTNAME}.gpt-gateway.com/plugin"}],
+    servers=[{"url": f"https://{HOSTNAME}.plugin.jiggy.ai/plugin"}],
     dependencies=plugin_dependencies,
 )
 app.mount("/plugin", sub_app)
