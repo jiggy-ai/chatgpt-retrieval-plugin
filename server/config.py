@@ -5,7 +5,7 @@ from typing import List, Optional, Union
 from enum import Enum
 import json
 
-from gpt_gateway.models import (
+from jiggybase.models import (
     PluginAuthType,
     OpenAIVerificationToken,
     OpenAIPluginAuthConfigOAuth,

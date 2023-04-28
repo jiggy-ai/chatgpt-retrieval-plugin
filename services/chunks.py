@@ -132,7 +132,9 @@ def create_document_chunks(
                                                   tokenizer_func = tokenizer.encode,
                                                   language       = doc.metadata.language,
                                                   pdf            = doc.mimetype == 'application/pdf')
-    logger.info(f"Split document {doc.id} into {len(text_chunks)} chunks")
+    total_tokens = sum(token_counts)
+    logger.info(f"Split document {doc.id} into {len(text_chunks)} chunks with a total of {total_tokens} tokens")
+    doc.token_count = total_tokens
                 
     metadata = (
         DocumentChunkMetadata(document_id = doc.id,
@@ -145,12 +147,13 @@ def create_document_chunks(
     doc_chunks = []
 
     # Assign each chunk a sequential number and create a DocumentChunk object
-    for i, text_chunk in enumerate(text_chunks):
+    for i, (text_chunk, token_count) in enumerate(zip(text_chunks, token_counts)):
         chunk_id = f"{doc.id}_{i}"
         doc_chunk = DocumentChunk(
             id=chunk_id,
             text=text_chunk,
             metadata=metadata,
+            token_count = token_count,
         )
         # Append the chunk object to the list of chunks for this document
         doc_chunks.append(doc_chunk)

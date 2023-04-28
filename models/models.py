@@ -57,7 +57,8 @@ class Document(BaseModel):
     text: str
     metadata: Optional[DocumentMetadata] = None
     mimetype: Optional[str] = None
-
+    token_count: Optional[int] = None
+    
 class DocumentWithChunks(Document):
     chunks: List[DocumentChunk]
 

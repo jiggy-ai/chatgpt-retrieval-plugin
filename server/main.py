@@ -97,7 +97,7 @@ async def upsert_file(
         ids = await datastore.upsert([document])        
         return UpsertResponse(ids=ids)
     except ValueError as e:
-        logger.error(e)
+        logger.exception(e)
         raise HTTPException(status_code=400, detail=str(e))            
     except Exception as e:
         logger.exception(e)

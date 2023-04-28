@@ -36,3 +36,5 @@ class DeleteResponse(BaseModel):
 
 class Accounting(BaseModel):
     chunk_count: int
+    doc_count: int
+    page_count: int

@@ -48,7 +48,6 @@ class DataStore(ABC):
         Takes in a list of list of document chunks and inserts them into the database.
         Return a list of document ids.
         """
-
         raise NotImplementedError
 
     async def query(self, queries: List[Query]) -> List[QueryResult]:
