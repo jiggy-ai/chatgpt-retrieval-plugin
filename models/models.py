@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional, Union
 from enum import Enum
-
+import uuid
 
 class Source(str, Enum):
     email = "email"
@@ -21,15 +21,16 @@ class DocumentMetadata(BaseModel):
     language: Optional[str] = None
 
 class DocumentChunkMetadata(DocumentMetadata):
-    document_id: Optional[str] = None
+    document_id: str
 
 
 class DocumentChunk(BaseModel):
-    id: Optional[str] = None
+    id: str
     text: str
     metadata: DocumentChunkMetadata
     embedding: Optional[List[float]] = None
-
+    token_count: Optional[int] = None
+    
     def __str__(self):
         if len(self.text) > 100:
             text = self.text[:100] + '...'
@@ -52,7 +53,7 @@ class DocumentChunkWithScore(DocumentChunk):
 
 
 class Document(BaseModel):
-    id: Optional[str] = None
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     text: str
     metadata: Optional[DocumentMetadata] = None
     mimetype: Optional[str] = None

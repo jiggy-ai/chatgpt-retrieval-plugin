@@ -1,6 +1,5 @@
 from loguru import logger
 from typing import Dict, List, Optional, Tuple
-import uuid
 from models.models import Document, DocumentChunk, DocumentChunkMetadata
 from server.config import chunk_config
 from services.chunk_sbd import chunk_text_pysbd
@@ -118,41 +117,36 @@ def create_document_chunks(
 
     Returns:
         A tuple of (doc_chunks, doc_id), where doc_chunks is a list of document chunks, each of which is a DocumentChunk object with an id, a document_id, a text, and a metadata attribute,
-        and doc_id is the id of the document object, generated if not provided. The id of each chunk is generated from the document id and a sequential number, and the metadata is copied from the document object.
+        and doc_id is the id of the document object. The id of each chunk is generated from the document id and a sequential number, and the metadata is copied from the document object.
     """
     # Check if the document text is empty or whitespace
     if not doc.text or doc.text.isspace():
-        return [], doc.id or str(uuid.uuid4())
-
-    # Generate a document id if not provided
-    doc_id = doc.id or str(uuid.uuid4())
+        return [], doc.id
 
     # Split the document text into chunks
     # text_chunks = get_text_chunks(doc.text, chunk_token_size)
     chunk_token_size = chunk_token_size or CHUNK_SIZE
     logger.info(f"Splitting {doc.mimetype} '{doc.metadata.language}' language document into chunks of size {chunk_token_size}")
-    text_chunks =  chunk_text_pysbd(text           = doc.text,
-                                    target_tokens  = chunk_token_size,                                    
-                                    tokenizer_func = tokenizer.encode,
-                                    language       = doc.metadata.language,
-                                    pdf            = doc.mimetype == 'application/pdf')
-    text_chunks = list(text_chunks)
-    logger.info(f"Split document {doc_id} into {len(text_chunks)} chunks")
+    text_chunks, token_counts =  chunk_text_pysbd(text           = doc.text,
+                                                  target_tokens  = chunk_token_size,                                    
+                                                  tokenizer_func = tokenizer.encode,
+                                                  language       = doc.metadata.language,
+                                                  pdf            = doc.mimetype == 'application/pdf')
+    logger.info(f"Split document {doc.id} into {len(text_chunks)} chunks")
                 
     metadata = (
-        DocumentChunkMetadata(**doc.metadata.__dict__)
+        DocumentChunkMetadata(document_id = doc.id,
+                              **doc.metadata.__dict__)
         if doc.metadata is not None
-        else DocumentChunkMetadata()
+        else DocumentChunkMetadata(document_id = doc.id)
     )
-
-    metadata.document_id = doc_id
 
     # Initialize an empty list of chunks for this document
     doc_chunks = []
 
     # Assign each chunk a sequential number and create a DocumentChunk object
     for i, text_chunk in enumerate(text_chunks):
-        chunk_id = f"{doc_id}_{i}"
+        chunk_id = f"{doc.id}_{i}"
         doc_chunk = DocumentChunk(
             id=chunk_id,
             text=text_chunk,
@@ -162,7 +156,7 @@ def create_document_chunks(
         doc_chunks.append(doc_chunk)
 
     # Return the list of chunks and the document id
-    return doc_chunks, doc_id
+    return doc_chunks, doc.id
 
 
 def get_document_chunks(
