@@ -12,7 +12,8 @@ import json
 from models.models import Document, DocumentMetadata, Source
 from services.extract_metadata import extract_metadata_from_document, csv_has_header
 import subprocess       
-
+import random
+import string
 
 async def get_document_from_file(file: UploadFile) -> Document:
     extracted_text, mimetype = await extract_text_from_form_file(file)
@@ -33,21 +34,28 @@ async def get_document_from_file(file: UploadFile) -> Document:
 def extract_text_from_filepath(filepath: str, mimetype: Optional[str] = None) -> str:
     """Return the text content of a file given its filepath."""
 
-    if mimetype is None:
+    if not mimetype:
         # Get the mimetype of the file based on its extension
         mimetype, _ = mimetypes.guess_type(filepath)
 
     if not mimetype:
+        logger.info(f"No mimetype found for {filepath}, infer based on file extension")
         if filepath.endswith(".md"):
             mimetype = "text/markdown"
+        elif filepath.endswith(".js"):
+            mimetype = "application/javascript"
+        elif filepath.endswith(".ts"):
+            mimetype = "application/x-typescript"
+        elif filepath.endswith(".tsx"):
+            mimetype = "application/x-typescript-jsx"
         else:
-            raise Exception("Unsupported file type")
+            logger.info(f"Unable to infer mimetype for {filepath}")
+            raise ValueError("Unsupported file type")
 
     # Open the file in binary mode
-    file = open(filepath, "rb")
-    extracted_text = extract_text_from_file(file, mimetype)
+    with open(filepath, "rb") as file:
+        return extract_text_from_file(file, mimetype)
 
-    return extracted_text
 
 
 excel_mimetypes = ["application/vnd.ms-excel",                                           # Excel 97-2003 Workbook (.xls)
@@ -86,14 +94,24 @@ def csv_fp_to_text(file) -> str:
     return extracted_text
 
 
+text_mimetypes = ["text/plain", 
+                  "text/markdown", 
+                  "text/x-python",
+                  "application/x-typescript",
+                  "application/x-typescript-jsx",
+                  "application/javascript"]
+
 def extract_text_from_file(file: BufferedReader, mimetype: str) -> str:
+    
     if mimetype == "application/pdf":
         # Extract text from pdf using PyPDF2
         reader = PdfReader(file)
         extracted_text = " ".join([page.extract_text() for page in reader.pages])
-    elif mimetype == "text/plain" or mimetype == "text/markdown":
+        
+    elif mimetype in text_mimetypes:
         # Read text from plain text file
         extracted_text = file.read().decode("utf-8")
+        
     elif (mimetype == "application/msword"):
         input_file = "/tmp/tmp.doc"
         open(input_file, 'wb').write(file.read())
@@ -107,12 +125,11 @@ def extract_text_from_file(file: BufferedReader, mimetype: str) -> str:
         extracted_text = docx2txt.process(f"{output_folder}/tmp.docx")  
         os.unlink(f"{output_folder}/tmp.docx")
         os.unlink(input_file)
-    elif (
-        mimetype
-        == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    ):
+        
+    elif (mimetype == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"):
         # Extract text from docx using docx2txt
         extracted_text = docx2txt.process(file)
+        
     elif mimetype in excel_mimetypes_to_extensions:
         input_file = f"/tmp/tmp.{excel_mimetypes_to_extensions[mimetype]}"
         open(input_file, 'wb').write(file.read())
@@ -126,12 +143,11 @@ def extract_text_from_file(file: BufferedReader, mimetype: str) -> str:
             extracted_text = csv_fp_to_text(csv_file)
         os.unlink(f"{output_folder}/tmp.csv")
         os.unlink(input_file)
+        
     elif mimetype == "text/csv":
         extracted_text = csv_fp_to_text(file)
-    elif (
-        mimetype
-        == "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-    ):
+        
+    elif (mimetype == "application/vnd.openxmlformats-officedocument.presentationml.presentation"):
         # Extract text from pptx using python-pptx
         extracted_text = ""
         presentation = pptx.Presentation(file)
@@ -151,29 +167,51 @@ def extract_text_from_file(file: BufferedReader, mimetype: str) -> str:
     return extracted_text
 
 
+
+def infer_mimetype(filename):
+    mimetype, _ = mimetypes.guess_type(filename)
+    
+    if not mimetype:
+        logger.info(f"No mimetype found for {filename}, infer based on file extension")
+        if filename.endswith(".md"):
+            mimetype = "text/markdown"
+        elif filename.endswith(".js"):
+            mimetype = "application/javascript"
+        elif filename.endswith(".ts"):
+            mimetype = "application/x-typescript"
+        elif filename.endswith(".tsx"):
+            mimetype = "application/x-typescript-jsx"
+        else:
+            logger.info(f"Unable to infer mimetype for {filename}")
+            raise ValueError("Unknown or unsupported file type. Try specifying the mimetype.")
+    return mimetype
+
+
 # Extract text from a file based on its mimetype
 async def extract_text_from_form_file(file: UploadFile):
     """Return the text content of a file."""
     # get the file body from the upload file object
     mimetype = file.content_type
+    if not mimetype:
+        mimetype = infer_mimetype(file.filename)
     logger.info(f"mimetype: {mimetype}")
 
     file_stream = await file.read()
 
-    temp_file_path = "/tmp/temp_file"
+    temp_file_path = "/tmp/" + ''.join(random.choices(string.ascii_letters, k=8))
 
     # write the file to a temporary location
     with open(temp_file_path, "wb") as f:
         f.write(file_stream)
 
     try:
-        extracted_text = extract_text_from_filepath(temp_file_path, mimetype)
+        with open(temp_file_path, "rb") as file:
+            extracted_text = extract_text_from_file(file, mimetype)        
     except Exception as e:
-        logger.error(f"Error: {e}")
+        logger.exception(f"Error extracting text from file: {e}")
+        raise ValueError(f"Error extracting text from file")
+    finally:
+        # remove file from temp location
         os.remove(temp_file_path)
-        raise e
-
-    # remove file from temp location
-    os.remove(temp_file_path)
 
     return extracted_text, mimetype
