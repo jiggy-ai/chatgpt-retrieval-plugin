@@ -114,9 +114,9 @@ async def token(request:       Request,
     response_json = response.json()
     # get sub from access_token and confirm sub has access to this plugin
     # will transition to audience claim in the future
-    sub = json.loads(base64.b64decode(response_json['access_token'].split(".")[1])).get('sub')
-    if sub not in sub_access.read:
-        raise HTTPException(status_code=403, detail="Unauthorized")
+    #sub = json.loads(base64.b64decode(response_json['access_token'].split(".")[1])).get('sub')
+    #if sub not in sub_access.read:
+    #    raise HTTPException(status_code=403, detail="Unauthorized")
     return response_json
 
 
