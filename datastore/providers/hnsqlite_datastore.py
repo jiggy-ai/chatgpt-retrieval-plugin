@@ -2,6 +2,8 @@ from loguru import logger
 import os
 from typing import Any, Dict, List, Optional
 import hnsqlite
+import sqlite3
+import shutil
 
 from datastore.datastore import DataStore
 from models.models import (
@@ -23,6 +25,7 @@ class HnsqliteDataStore(DataStore):
     def __init__(self):
         os.chdir(HNSQLITE_DIR) # this goes away hnsqlite saves index in db
         dbfile = f'{HNSQLITE_DIR}/collection__{HNSQLITE_COLLECTION}.sqlite'
+        self.dbfile = dbfile
         self.collection = hnsqlite.Collection(collection_name=HNSQLITE_COLLECTION, sqlite_filename=dbfile, dimension=1536)
             
     async def _upsert(self, chunks: Dict[str, List[DocumentChunk]]) -> List[str]:
@@ -215,6 +218,31 @@ class HnsqliteDataStore(DataStore):
         """
         logger.info('save index')
         collection = self.collection
-        self.collection = None        
-        collection.save_index()
+        self.collection = None  
+        index_fn = collection.save_index()
+        collection = None  # done with collection object
+        shutil.copy(index_fn, f'{HNSQLITE_DIR}/backup/{index_fn}')
+        logger.info('backup sqlite')
+        # connect to the database file
+        source_conn = sqlite3.connect(self.dbfile)
+        # backup to a new backup database file
+        sqlite_backup_fn = f'{HNSQLITE_DIR}/tmp-backup-collection__{HNSQLITE_COLLECTION}.sqlite'
+        try:
+            os.unlink(sqlite_backup_fn)
+        except:
+            pass
+        destination_conn = sqlite3.connect(sqlite_backup_fn)        
+        # perform the backup
+        source_conn.backup(destination_conn)
+        source_conn.close()
+        destination_conn.close()
+        logger.info('backup complete')
+        # ensure backup directory exists
+        try:
+            os.mkdir(f'{HNSQLITE_DIR}/backup')
+        except:
+            pass
+        # atomically move the backup to the backup directory with canonical name
+        os.rename(sqlite_backup_fn, f'{HNSQLITE_DIR}/backup/collection__{HNSQLITE_COLLECTION}.sqlite')
+        logger.info('shutdown complete')
         
