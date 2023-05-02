@@ -4,6 +4,8 @@ from typing import Any, Dict, List, Optional
 import hnsqlite
 import sqlite3
 import shutil
+import asyncio
+from time import time
 
 from datastore.datastore import DataStore
 from models.models import (
@@ -27,12 +29,16 @@ class HnsqliteDataStore(DataStore):
         dbfile = f'{HNSQLITE_DIR}/collection__{HNSQLITE_COLLECTION}.sqlite'
         self.dbfile = dbfile
         self.collection = hnsqlite.Collection(collection_name=HNSQLITE_COLLECTION, sqlite_filename=dbfile, dimension=1536)
-            
+        self.last_update = 0
+        self.exit = False
+        asyncio.create_task(self._periodic())            
+
+    
     async def _upsert(self, chunks: Dict[str, List[DocumentChunk]]) -> List[str]:
         """
         Takes in a dict from document id to list of document chunks and inserts them into the index.
         Return a list of document ids.
-        """
+        """                      
         if not chunks:
             raise ValueError("missing chunks")
         # Initialize a list of ids to return
@@ -57,6 +63,7 @@ class HnsqliteDataStore(DataStore):
         self.collection.add_embeddings(embeddings)
         for e in embeddings:
             logger.info(f'added embedding {e}')
+        self.last_update = time()
         return doc_ids
 
     async def _query(
@@ -128,7 +135,7 @@ class HnsqliteDataStore(DataStore):
     ) -> bool:
         """
         Removes vectors by ids, filter, or everything from the index.
-        """
+        """ 
         # Delete all vectors from the index if delete_all is True
         if delete_all == True:
             try:
@@ -160,7 +167,7 @@ class HnsqliteDataStore(DataStore):
             except Exception as e:
                 logger.error(f"Error deleting vectors with ids: {e}")
                 raise e
-
+        self.last_update = time()
         return True
 
     def _get_hnsqlite_filter(
@@ -211,16 +218,22 @@ class HnsqliteDataStore(DataStore):
         Returns the number of chunks in the datastore
         """
         return self.collection.count()
-    
-    def shutdown(self):
-        """
-        prepare for shutdown    
-        """
+
+    async def _periodic(self):
+        while not self.exit:
+            await asyncio.sleep(15)  
+            if not self.last_update:
+                continue
+            if time() - self.last_update < 120:
+                continue
+            logger.info("backup after update")           
+            self._backup() 
+            self.last_update = 0
+                
+    def _backup(self):
         logger.info('save index')
         collection = self.collection
-        self.collection = None  
         index_fn = collection.save_index()
-        collection = None  # done with collection object
         shutil.copy(index_fn, f'{HNSQLITE_DIR}/backup/{index_fn}')
         logger.info('backup sqlite')
         # connect to the database file
@@ -236,7 +249,6 @@ class HnsqliteDataStore(DataStore):
         source_conn.backup(destination_conn)
         source_conn.close()
         destination_conn.close()
-        logger.info('backup complete')
         # ensure backup directory exists
         try:
             os.mkdir(f'{HNSQLITE_DIR}/backup')
@@ -244,5 +256,15 @@ class HnsqliteDataStore(DataStore):
             pass
         # atomically move the backup to the backup directory with canonical name
         os.rename(sqlite_backup_fn, f'{HNSQLITE_DIR}/backup/collection__{HNSQLITE_COLLECTION}.sqlite')
+        logger.info('backup complete')
+       
+    def shutdown(self):
+        """
+        prepare for shutdown    
+        """
+        logger.info('shutdown')
+        self.exit = True
+        if self.last_update:
+            self._backup()
+        self.collection = None  
         logger.info('shutdown complete')
-        
