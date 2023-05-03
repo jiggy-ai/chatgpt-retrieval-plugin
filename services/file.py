@@ -15,12 +15,26 @@ import subprocess
 import random
 import string
 
+
+excel_mimetypes = ["application/vnd.ms-excel",                                           # Excel 97-2003 Workbook (.xls)
+                   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",  # Excel Workbook (.xlsx)
+                   "application/vnd.ms-excel.sheet.macroEnabled.12",                     # Excel Macro-Enabled Workbook (.xlsm)
+                   "application/vnd.ms-excel.sheet.binary.macroEnabled.12",              # Excel Binary Workbook (.xlsb) 
+                   "application/vnd.ms-excel.template.macroEnabled.12",                  # Excel Template (.xlt)
+                   "application/vnd.ms-excel.template.macroEnabled.12",                  # Excel Macro-Enabled Template (.xltm)
+                   "application/vnd.ms-excel.addin.macroEnabled.12"]                     # Excel Add-In (.xlam)
+
+
 async def get_document_from_file(file: UploadFile) -> Document:
     extracted_text, mimetype = await extract_text_from_form_file(file)
 
-
-    extracted_metadata = extract_metadata_from_document(extracted_text)
-    logger.info(f"Extracted metadata: {extracted_metadata}")
+    if mimetype not in excel_mimetypes + ['text/csv']:
+        extracted_metadata = extract_metadata_from_document(extracted_text)
+        logger.info(f"Extracted metadata: {extracted_metadata}")
+    else:
+        # tabular datafiles tend not to have visible metadata
+        extracted_metadata = {}        
+        logger.info("No metadata extracted for excel or csv files")
 
     metadata = DocumentMetadata(source    = Source.file, 
                                 source_id = file.filename, 
@@ -58,18 +72,11 @@ def extract_text_from_filepath(filepath: str, mimetype: Optional[str] = None) ->
 
 
 
-excel_mimetypes = ["application/vnd.ms-excel",                                           # Excel 97-2003 Workbook (.xls)
-                   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",  # Excel Workbook (.xlsx)
-                   "application/vnd.ms-excel.sheet.macroEnabled.12",                     # Excel Macro-Enabled Workbook (.xlsm)
-                   "application/vnd.ms-excel.sheet.binary.macroEnabled.12",              # Excel Binary Workbook (.xlsb) 
-                   "application/vnd.ms-excel.template.macroEnabled.12",                  # Excel Template (.xlt)
-                   "application/vnd.ms-excel.template.macroEnabled.12",                  # Excel Macro-Enabled Template (.xltm)
-                   "application/vnd.ms-excel.addin.macroEnabled.12"]                     # Excel Add-In (.xlam)
 
 # dictionary of excel mimetypes and their corresponding extensions
 
 excel_mimetypes_to_extensions = {
-    "application/vnd.ms-excel": ".xls",
+    "application/vnd.ms-excel": "xls",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
     "application/vnd.ms-excel.sheet.macroEnabled.12": "xlsm",
     "application/vnd.ms-excel.sheet.binary.macroEnabled.12": "xlsb",
@@ -78,9 +85,20 @@ excel_mimetypes_to_extensions = {
     "application/vnd.ms-excel.addin.macroEnabled.12": "xlam",
 }
 
+encoding_options = (("utf-8", "strict"), ("windows-1252", "strict"), ("iso-8859-1", "strict"), ("utf-8", "replace"))
+
+def dynamic_decode(data):
+    for encoding, errors in encoding_options:
+        try:
+            return data.decode(encoding, errors=errors)
+        except UnicodeDecodeError:
+            pass
+    raise ValueError("Unable to decode data, unknown character encoding")
+
+
 def csv_fp_to_text(file) -> str:
-    extracted_text = ""
-    decoded_buffer = [line.decode("utf-8") for line in file]
+    extracted_text = ""    
+    decoded_buffer = [dynamic_decode(line) for line in file]
     if csv_has_header(decoded_buffer[:20]): 
         logger.info("reading csv with header")
         reader = csv.DictReader(decoded_buffer)
@@ -207,11 +225,9 @@ async def extract_text_from_form_file(file: UploadFile):
     try:
         with open(temp_file_path, "rb") as file:
             extracted_text = extract_text_from_file(file, mimetype)        
+        os.remove(temp_file_path)
     except Exception as e:
         logger.exception(f"Error extracting text from file: {e}")
         raise ValueError(f"Error extracting text from file")
-    finally:
-        # remove file from temp location
-        os.remove(temp_file_path)
-
+                
     return extracted_text, mimetype
