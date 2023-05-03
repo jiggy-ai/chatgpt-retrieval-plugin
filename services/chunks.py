@@ -4,6 +4,7 @@ from models.models import Document, DocumentChunk, DocumentChunkMetadata
 from server.config import chunk_config
 from services.chunk_sbd import chunk_text_pysbd
 import tiktoken
+from services.file import excel_mimetypes
 
 from services.openai import get_embeddings
 
@@ -104,7 +105,28 @@ def get_text_chunks(text: str, chunk_token_size: Optional[int]) -> List[str]:
 
     return chunks
 
+def get_csv_chunks(records : list[str], max_tokens : int):
+    chunks = []
+    tokens = []
+    for record in records:
+        token_count = len(tokenizer.encode(record, disallowed_special=()))
+        if token_count > CHUNK_SIZE:
+            chars = len(record)
+            tokens_per_char = token_count / chars
+            max_chars = int(max_tokens / tokens_per_char)
+            # split the record into chunks of less than max_chars
+            for i in range(0, len(record), max_chars):
+                chunk = record[i:i+max_chars]
+                chunks.append(chunk)
+                token_count = len(tokenizer.encode(chunk, disallowed_special=()))
+                tokens.append(token_count)
+        else:
+            chunks.append(record)
+            tokens.append(token_count)
 
+    return chunks, tokens
+    
+    
 def create_document_chunks(
     doc: Document, chunk_token_size: Optional[int]
 ) -> Tuple[List[DocumentChunk], str]:
@@ -126,12 +148,16 @@ def create_document_chunks(
     # Split the document text into chunks
     # text_chunks = get_text_chunks(doc.text, chunk_token_size)
     chunk_token_size = chunk_token_size or CHUNK_SIZE
-    logger.info(f"Splitting {doc.mimetype} '{doc.metadata.language}' language document into chunks of size {chunk_token_size}")
-    text_chunks, token_counts =  chunk_text_pysbd(text           = doc.text,
-                                                  target_tokens  = chunk_token_size,                                    
-                                                  tokenizer_func = tokenizer.encode,
-                                                  language       = doc.metadata.language,
-                                                  pdf            = doc.mimetype == 'application/pdf')
+    if doc.mimetype in ['text/csv']+excel_mimetypes:
+        logger.info(f"Splitting {doc.mimetype} into chunks on record boundaries")
+        text_chunks, token_counts = get_csv_chunks(doc.text.split('\n'), max_tokens=2000)
+    else:
+        logger.info(f"Splitting {doc.mimetype} '{doc.metadata.language}' language document into chunks of size {chunk_token_size}")
+        text_chunks, token_counts =  chunk_text_pysbd(text           = doc.text,
+                                                      target_tokens  = chunk_token_size,                                    
+                                                      tokenizer_func = tokenizer.encode,
+                                                      language       = doc.metadata.language,
+                                                      pdf            = doc.mimetype == 'application/pdf')
     total_tokens = sum(token_counts)
     logger.info(f"Split document {doc.id} into {len(text_chunks)} chunks with a total of {total_tokens} tokens")
     doc.token_count = total_tokens
