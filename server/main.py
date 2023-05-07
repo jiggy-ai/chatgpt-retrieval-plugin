@@ -23,7 +23,6 @@ from models.api import (
     UpsertResponse,
     DocumentChunk,
     Accounting,
-    DocChunksRequest,
     DocChunksResponse
 )
 from datastore.factory import get_datastore
@@ -180,11 +179,14 @@ async def docs(doc_id: str = Path(..., description="The document ID to get" )):
     response_model=DocChunksResponse,
     dependencies=[Depends(validate_subscriber_token)],        
 )
-async def doc_chunks(body: DocChunksRequest):
+async def doc_chunks(index: Optional[int] = Query(default=-1, description="Offset of the first result to return"),
+                     limit: Optional[int] = Query(default=10, description="Number of results to return starting from the offset"),
+                     reverse: Optional[bool] = Query(default=True, description="Reverse the order of the items"),
+                     max_chunks_per_doc: Optional[int] = Query(default=1, description="Maximum number of chunks to return per document")):
 
-    logger.info(f"index {body.index}, limit {body.limit}, reverse {body.reverse} max_chunks_per_doc {body.max_chunks_per_doc}")
+    logger.info(f"index {index}, limit {limit}, reverse {reverse} max_chunks_per_doc {max_chunks_per_doc}")
     try:
-        results, index = await datastore.doc_chunks(body.index, body.limit, body.reverse, body.max_chunks_per_doc)            
+        results, index = await datastore.doc_chunks(index, limit, reverse, max_chunks_per_doc)
         return DocChunksResponse(docs=results, next_index=index)
     except ValueError as e:
         logger.error(e)
@@ -192,6 +194,7 @@ async def doc_chunks(body: DocChunksRequest):
     except Exception as e:        
         logger.exception("Error:", e)
         raise HTTPException(status_code=500, detail="Internal Service Error")    
+
     
 @app.get(
     "/chunks",
