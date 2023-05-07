@@ -1,6 +1,6 @@
 from loguru import logger
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 import asyncio
 
 from models.models import (
@@ -71,6 +71,12 @@ class DataStore(ABC):
         """
         raise NotImplementedError
 
+    async def doc_chunks(self, index : int, limit : int, reverse : bool, max_chunks_per_doc : int) -> Tuple[List[DocumentChunk], int]:
+        """
+        Returns a list of document chunks from the datastore based on the start, limit, and reverse parameters.
+        """
+        raise NotImplementedError
+    
     async def chunks(self, start: int, limit: int, reverse :bool) -> List[DocumentChunk]:
         """
         Returns a list of document chunks from the datastore based on the start, limit, and reverse parameters.

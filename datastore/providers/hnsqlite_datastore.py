@@ -1,6 +1,6 @@
 from loguru import logger
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 import hnsqlite
 import sqlite3
 import shutil
@@ -105,6 +105,19 @@ class HnsqliteDataStore(DataStore):
 
         return [_single_query(q) for q in queries]
 
+    async def doc_chunks(self, index : int, limit : int, reverse : bool, max_chunks_per_doc : int) -> Tuple[List[DocumentChunk], int]:
+        """
+        Returns a list of document chunks from the datastore grouped by document 
+        """        
+        docs, index =  self.collection.get_embeddings_by_doc(index, limit, reverse, max_chunks_per_doc)
+        results = []
+        for doc_embeddings in docs:
+            result = [DocumentChunk(id = e.metadata.pop('hnsqlite:doc_chunk_id'),
+                                    text = e.text,
+                                    metadata = e.metadata) for e in doc_embeddings]
+            results.append(result)
+        return results, index
+    
     async def _chunks(self, start: int, limit: int, reverse :bool) -> List[DocumentChunk]:
         """
         Returns a list of document chunks from the datastore

@@ -226,6 +226,8 @@ async def extract_text_from_form_file(file: UploadFile):
         with open(temp_file_path, "rb") as file:
             extracted_text = extract_text_from_file(file, mimetype)        
         os.remove(temp_file_path)
+    except ValueError as e:
+        raise
     except Exception as e:
         logger.exception(f"Error extracting text from file: {e}")
         raise ValueError(f"Error extracting text from file")

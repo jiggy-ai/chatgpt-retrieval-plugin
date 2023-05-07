@@ -22,7 +22,9 @@ from models.api import (
     UpsertRequest,
     UpsertResponse,
     DocumentChunk,
-    Accounting
+    Accounting,
+    DocChunksRequest,
+    DocChunksResponse
 )
 from datastore.factory import get_datastore
 from services.file import get_document_from_file
@@ -97,7 +99,7 @@ async def upsert_file(
         ids = await datastore.upsert([document])        
         return UpsertResponse(ids=ids)
     except ValueError as e:
-        logger.exception(e)
+        logger.error(e)
         raise HTTPException(status_code=400, detail=str(e))            
     except Exception as e:
         logger.exception(e)
@@ -173,7 +175,24 @@ async def docs(doc_id: str = Path(..., description="The document ID to get" )):
         raise HTTPException(status_code=500, detail="Internal Service Error")
 
 
+@app.get(
+    "/doc_chunks",
+    response_model=DocChunksResponse,
+    dependencies=[Depends(validate_subscriber_token)],        
+)
+async def doc_chunks(body: DocChunksRequest):
 
+    logger.info(f"index {body.index}, limit {body.limit}, reverse {body.reverse} max_chunks_per_doc {body.max_chunks_per_doc}")
+    try:
+        results, index = await datastore.doc_chunks(body.index, body.limit, body.reverse, body.max_chunks_per_doc)            
+        return DocChunksResponse(docs=results, next_index=index)
+    except ValueError as e:
+        logger.error(e)
+        raise HTTPException(status_code=400, detail=str(e))        
+    except Exception as e:        
+        logger.exception("Error:", e)
+        raise HTTPException(status_code=500, detail="Internal Service Error")    
+    
 @app.get(
     "/chunks",
     response_model=list[DocumentChunk],

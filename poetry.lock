@@ -961,14 +961,14 @@ hyperframe = ">=6.0,<7"
 
 [[package]]
 name = "hnsqlite"
-version = "0.2.1"
+version = "0.2.2"
 description = "A minimalist integration of sqlite and hnswlib focused on providing simple embedding persistence and search for text applications."
 category = "main"
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "hnsqlite-0.2.1-py3-none-any.whl", hash = "sha256:fb9f66ffa6457cd26998059c51ffa01913562143004b5699ac26def4343c8675"},
-    {file = "hnsqlite-0.2.1.tar.gz", hash = "sha256:6562f51b37afc0621b61778596a41c0c2120ac3d0dd798aca613b6f74b477757"},
+    {file = "hnsqlite-0.2.2-py3-none-any.whl", hash = "sha256:cff7c7615f2fe0ce364b93a636684573893174b0296c89fd82abc96f7a8143a4"},
+    {file = "hnsqlite-0.2.2.tar.gz", hash = "sha256:e19f541e1a9d322bf21d6205aad4bfcda6f17b7a01eaf70099ec7003107eed8d"},
 ]
 
 [package.dependencies]
@@ -2686,4 +2686,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "873ce7a286bfbbd7bc280307111c782b8c5c882c02a4fa359b435334a2bf2166"
+content-hash = "95082b90faf38830f6ba61b55638f149da298a2aff1c4c231784fe0b890be34a"
