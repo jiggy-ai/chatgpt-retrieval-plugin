@@ -92,6 +92,7 @@ app.mount("/.well-known", StaticFiles(directory="/code/.well-known"), name="stat
 async def upsert_file(
     file: UploadFile = File(...),
 ):
+
     logger.info(f"Received file {file.filename}")
     try:
         document = await get_document_from_file(file)        
@@ -195,7 +196,23 @@ async def doc_chunks(index: Optional[int] = Query(default=-1, description="Offse
         logger.exception("Error:", e)
         raise HTTPException(status_code=500, detail="Internal Service Error")    
 
-    
+
+@app.get(
+    "/doc_chunks/{chunk_id}",
+    response_model=DocumentChunk,
+    dependencies=[Depends(validate_subscriber_token)],        
+)
+async def doc_chunks_chunk_id(chunk_id: str = Path(description="document chunk ID to return")):                              
+    try:
+        return await datastore.doc_chunk_id(chunk_id)
+    except ValueError as e:
+        logger.error(e)
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:        
+        logger.exception("Error:", e)
+        raise HTTPException(status_code=500, detail="Internal Service Error")    
+
+        
 @app.get(
     "/chunks",
     response_model=list[DocumentChunk],

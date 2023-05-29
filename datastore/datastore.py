@@ -96,10 +96,16 @@ class DataStore(ABC):
         Returns the number of chunks in the datastore
         """
         return NotImplementedError
-        
+
+    async def doc_chunk_id(self, doc_chunk_id) -> DocumentChunk:
+        """
+        Returns a DocumentChunk from the datastore based on the doc_chunk_id
+        """
+        return await self._doc_chunk_id(doc_chunk_id)
+    
     async def doc(self, doc_id) -> List[DocumentChunk]:
         """
-        Returns a list of document chunks from the datastore based on the doc_id
+        Returns a list of DocumentChunk from the datastore based on the doc_id
         """
         return await self._doc(doc_id)
 

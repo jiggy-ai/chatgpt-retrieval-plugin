@@ -22,6 +22,9 @@ from services.date import to_unix_timestamp
 HNSQLITE_COLLECTION = os.environ.get("HNSQLITE_COLLECTION", 'default')
 HNSQLITE_DIR        = os.environ.get("HNSQLITE_DIR", '.')
 
+HOSTNAME = os.environ['HOSTNAME']   
+
+
     
 class HnsqliteDataStore(DataStore):
     def __init__(self):
@@ -38,7 +41,8 @@ class HnsqliteDataStore(DataStore):
         """
         Takes in a dict from document id to list of document chunks and inserts them into the index.
         Return a list of document ids.
-        """                      
+        Note: we proceed to ignore the assigned DocumentChunk.id and reassign it here based on our hnsqlite database embedding id
+        """                 
         if not chunks:
             raise ValueError("missing chunks")
         # Initialize a list of ids to return
@@ -55,10 +59,9 @@ class HnsqliteDataStore(DataStore):
                 # Convert the metadata object to a dict with unix timestamps for dates
                 hnsqlite_metadata = self._get_hnsqlite_metadata(chunk.metadata)
                 # Add document chunk id to the metadata dict in a way that is unlikely to conflict with other metadata
-                hnsqlite_metadata['hnsqlite:doc_chunk_id']  = chunk.id                
-                embeddings.append(hnsqlite.Embedding(vector = chunk.embedding, 
-                                                     text = chunk.text,
-                                                     doc_id = doc_id,
+                embeddings.append(hnsqlite.Embedding(vector   = chunk.embedding, 
+                                                     text     = chunk.text,
+                                                     doc_id   = doc_id,
                                                      metadata = hnsqlite_metadata))
         self.collection.add_embeddings(embeddings)
         for e in embeddings:
@@ -95,11 +98,12 @@ class HnsqliteDataStore(DataStore):
             query_results: List[DocumentChunkWithScore] = []
             for search_response in search_responses:                                    
                 # Create a document chunk with score object with the result data
-                doc_chunk_id = search_response.metadata.pop('hnsqlite:doc_chunk_id')
-                dcws = DocumentChunkWithScore(id = doc_chunk_id,
-                                              score = 1 - search_response.distance,
-                                              text = search_response.text,
-                                              metadata = search_response.metadata)
+                dcws = DocumentChunkWithScore(id            = search_response.id,
+                                              doc_id        = search_response.doc_id,
+                                              reference_url = f"https://jiggy.ai/reference?collection={HNSQLITE_COLLECTION}&id={search_response.id}",
+                                              score         = 1 - search_response.distance,
+                                              text          = search_response.text,
+                                              metadata      = search_response.metadata)
                 query_results.append(dcws)
             return QueryResult(query=query.query, results=query_results)
 
@@ -112,8 +116,9 @@ class HnsqliteDataStore(DataStore):
         docs, index =  self.collection.get_embeddings_by_doc(index, limit, reverse, max_chunks_per_doc)
         results = []
         for doc_embeddings in docs:
-            result = [DocumentChunk(id = e.metadata.pop('hnsqlite:doc_chunk_id'),
-                                    text = e.text,
+            result = [DocumentChunk(id       = e.id,
+                                    doc_id   = e.doc_id,
+                                    text     = e.text,
                                     metadata = e.metadata) for e in doc_embeddings]
             results.append(result)
         return results, index
@@ -123,8 +128,9 @@ class HnsqliteDataStore(DataStore):
         Returns a list of document chunks from the datastore
         """
         embeddings = self.collection.get_embeddings(start=start, limit=limit, reverse=reverse)
-        results = [DocumentChunk(id = e.metadata.pop('hnsqlite:doc_chunk_id'),
-                                 text = e.text,
+        results = [DocumentChunk(id       = e.id,
+                                 doc_id   = e.doc_id,
+                                 text     = e.text,
                                  metadata = e.metadata) for e in embeddings]
         return results
     
@@ -135,11 +141,20 @@ class HnsqliteDataStore(DataStore):
         Returns a list of document chunks from the datastore based on the doc_id
         """
         embeddings = self.collection.get_embeddings_doc_ids([doc_id])
-        results = [DocumentChunk(id = e.metadata.pop('hnsqlite:doc_chunk_id'),
-                                 text = e.text,
+        results = [DocumentChunk(id       = e.id,
+                                 doc_id   = e.doc_id,
+                                 text     = e.text,
                                  metadata = e.metadata) for e in embeddings]
         return results        
-    
+
+    async def _doc_chunk_id(self, doc_chunk_id) -> DocumentChunk:
+        embedding = self.collection.get_embedding_by_id(int(doc_chunk_id))
+        result = DocumentChunk(id       = embedding.id,
+                               doc_id   = embedding.doc_id,
+                               text     = embedding.text,
+                               metadata = embedding.metadata)
+        return result
+        
     async def delete(
         self,
         ids: Optional[List[str]] = None,

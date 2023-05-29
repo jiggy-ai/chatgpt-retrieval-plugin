@@ -26,10 +26,12 @@ class DocumentChunkMetadata(DocumentMetadata):
 
 class DocumentChunk(BaseModel):
     id: str
+    doc_id: Optional[str]
     text: str
     metadata: DocumentChunkMetadata
     embedding: Optional[List[float]] = None
     token_count: Optional[int] = None
+    reference_url: Optional[str] = None
     
     def __str__(self):
         if len(self.text) > 100:

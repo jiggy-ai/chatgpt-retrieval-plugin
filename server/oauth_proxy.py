@@ -95,11 +95,11 @@ async def token(request:       Request,
         raise HTTPException(status_code=400, detail="redirect_uri mismatch")
 
     if token_request.client_id != oauth_config.client_id:
-        logger.warning(f"client_id doesn't match: {token_request.client_id} != {GPTG_OAUTH_CLIENT_ID}")
+        logger.warning(f"client_id doesn't match: {token_request.client_id} != {oauth_config.client_id}")
         raise HTTPException(status_code=400, detail="client_id mismatch")
     
     if token_request.client_secret != oauth_config.client_secret:
-        logger.warning(f"client_secret doesn't match: {token_request.client_secret} != {GPTG_OAUTH_CLIENT_SECRET}")
+        logger.warning(f"client_secret doesn't match: {token_request.client_secret}")
         raise HTTPException(status_code=400, detail="client_secret mismatch")
 
     # replace the client id/secret with our own backend auth client id/secret
