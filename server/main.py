@@ -92,7 +92,7 @@ app.mount("/.well-known", StaticFiles(directory="/code/.well-known"), name="stat
 async def upsert_file(
     file: UploadFile = File(...),
 ):
-
+    app.state.last_op = time()    
     logger.info(f"Received file {file.filename}")
     try:
         document = await get_document_from_file(file)        
@@ -115,6 +115,7 @@ async def upsert_file(
 async def upsert(
     request: UpsertRequest = Body(...),        
 ):
+    app.state.last_op = time()        
     logger.info(f"{len(request.documents)} documents")
     try:
         for document in request.documents:
@@ -143,6 +144,7 @@ async def upsert(
 async def query_main(
     request: QueryRequest = Body(...),
 ):
+    app.state.last_op = time()        
     logger.info(request)
     try:
         results = await datastore.query(
@@ -163,6 +165,7 @@ async def query_main(
     dependencies=[Depends(validate_subscriber_token)],        
 )
 async def docs(doc_id: str = Path(..., description="The document ID to get" )):
+    app.state.last_op = time()        
     logger.info(doc_id)
     try:
         results = await datastore.doc(doc_id)
@@ -185,6 +188,7 @@ async def doc_chunks(index: Optional[int] = Query(default=-1, description="Offse
                      reverse: Optional[bool] = Query(default=True, description="Reverse the order of the items"),
                      max_chunks_per_doc: Optional[int] = Query(default=1, description="Maximum number of chunks to return per document")):
 
+    app.state.last_op = time()    
     logger.info(f"index {index}, limit {limit}, reverse {reverse} max_chunks_per_doc {max_chunks_per_doc}")
     try:
         results, index = await datastore.doc_chunks(index, limit, reverse, max_chunks_per_doc)
@@ -202,7 +206,8 @@ async def doc_chunks(index: Optional[int] = Query(default=-1, description="Offse
     response_model=DocumentChunk,
     dependencies=[Depends(validate_subscriber_token)],        
 )
-async def doc_chunks_chunk_id(chunk_id: str = Path(description="document chunk ID to return")):                              
+async def doc_chunks_chunk_id(chunk_id: str = Path(description="document chunk ID to return")):       
+    app.state.last_op = time()                               
     try:
         return await datastore.doc_chunk_id(chunk_id)
     except ValueError as e:
@@ -221,6 +226,7 @@ async def doc_chunks_chunk_id(chunk_id: str = Path(description="document chunk I
 async def chunks(start: Optional[int] = Query(default=0, description="Offset of the first result to return"),
                  limit: Optional[int] = Query(default=10, description="Number of results to return starting from the offset"),
                  reverse: Optional[bool] = Query(default=True, description="Reverse the order of the items")):
+    app.state.last_op = time()        
     logger.info(f"start {start}, limit {limit}, reverse {reverse}")
     try:
         results = await datastore.chunks(start, limit, reverse)
@@ -246,6 +252,7 @@ async def ping() -> str: return "pong"
 async def query(
     request: QueryRequest = Body(...),
 ):
+    app.state.last_op = time()        
     logger.info(request)
     try:
         results = await datastore.query(
@@ -268,6 +275,7 @@ async def query(
 async def delete(
     request: DeleteRequest = Body(...),
 ):
+    app.state.last_op = time()    
     logger.info(request)
     if not (request.ids or request.filter or request.delete_all):
         raise HTTPException(
@@ -306,6 +314,14 @@ def get_config() -> ServiceConfig:
 )
 def accounting() -> Accounting:
     return Accounting(chunk_count = datastore.chunk_count()) 
+
+
+from pydantic import BaseModel
+class LastOpRsp(BaseModel):
+    last_op: int
+@app.get('/last_op', include_in_schema=False)
+async def last_op() -> LastOpRsp: 
+    return LastOpRsp(last_op = int(app.state.last_op))
 
 
 import server.oauth_proxy    # add additional endpoints post app creation
