@@ -38,11 +38,10 @@ def chunk_text_pysbd(text           : str,
             if s_tokens < max_tokens:
                 yield s, s_tokens
             else:
-                for t in get_text_chunks(s, max_tokens):
-                    yield t, len(tokenizer_func(t))
+                for text, tokens in get_text_chunks(s, max_tokens):
+                    yield text, tokens
                     
     for s, s_tokens in subchunk():
-        s_tokens = len(tokenizer_func(s))
         if sum_current_tokens + s_tokens//2 > target_tokens:
             result_chunks.append(" ".join(current_lines))
             result_token_counts.append(sum(current_tokens))

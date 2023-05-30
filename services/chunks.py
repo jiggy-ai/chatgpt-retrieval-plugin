@@ -6,6 +6,7 @@ from services.chunk_sbd import chunk_text_pysbd
 import tiktoken
 from services.file import excel_mimetypes
 from services.openai import get_embeddings
+from services.chunk_text_simple import get_text_chunks
 
 # Global variables
 tokenizer = tiktoken.get_encoding(
@@ -20,7 +21,6 @@ MIN_CHUNK_SIZE_CHARS      = chunk_config.min_chunk_size_chars       # The minimu
 MIN_CHUNK_LENGTH_TO_EMBED = chunk_config.min_chunk_length_to_embed  # Discard chunks shorter than this
 EMBEDDINGS_BATCH_SIZE     = chunk_config.embeddings_batch_size      # The number of embeddings to request at a time
 MAX_NUM_CHUNKS            = chunk_config.max_num_chunks             # The maximum number of chunks to generate from a text
-
 
 
 
@@ -45,6 +45,8 @@ def get_csv_chunks(records : list[str], max_tokens : int):
             tokens.append(token_count)
 
     return chunks, tokens
+                                
+    
     
     
 def create_document_chunks(
@@ -73,11 +75,16 @@ def create_document_chunks(
         text_chunks, token_counts = get_csv_chunks(doc.text.split('\n'), max_tokens=2000)
     else:
         logger.info(f"Splitting {doc.mimetype} '{doc.metadata.language}' language document into chunks of size {chunk_token_size}")
-        text_chunks, token_counts =  chunk_text_pysbd(text           = doc.text,
-                                                      target_tokens  = chunk_token_size,                                    
-                                                      tokenizer_func = tokenizer.encode,
-                                                      language       = doc.metadata.language,
-                                                      pdf            = doc.mimetype == 'application/pdf')
+        try:
+            text_chunks, token_counts =  chunk_text_pysbd(text           = doc.text,
+                                                          target_tokens  = chunk_token_size,                                    
+                                                          tokenizer_func = tokenizer.encode,
+                                                          language       = doc.metadata.language,
+                                                          pdf            = doc.mimetype == 'application/pdf')
+        except Exception as e:
+            logger.error(f"pysbd failed to split {doc.mimetype} '{doc.metadata.language}' language document into chunks of size {chunk_token_size}: ({e})")
+            text_chunks, token_counts = get_text_chunks(doc.text, chunk_token_size)
+            
     total_tokens = sum(token_counts)
     logger.info(f"Split document {doc.id} into {len(text_chunks)} chunks with a total of {total_tokens} tokens")
     doc.token_count = total_tokens

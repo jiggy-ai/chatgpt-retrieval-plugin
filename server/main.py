@@ -12,7 +12,7 @@ from fastapi.openapi.utils import get_openapi
 import yaml
 import json
 import copy
-
+from time import time
 
 from models.api import (
     DeleteRequest,
@@ -315,6 +315,7 @@ async def startup():
     global datastore
     datastore = await get_datastore()
     logger.info("Startup complete")
+    app.state.last_op = time()
     
 @app.on_event("shutdown")
 async def shutdown_event():

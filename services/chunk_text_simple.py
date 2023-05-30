@@ -29,19 +29,21 @@ def get_text_chunks(text: str, chunk_token_size: Optional[int]) -> List[str]:
         text: The text to split into chunks.
         chunk_token_size: The target size of each chunk in tokens, or None to use the default CHUNK_SIZE.
 
-    Returns:
+    Returns a tuple of:
         A list of text chunks, each of which is a string of ~CHUNK_SIZE tokens.
+        A list of the number of tokens in each chunk.
     """
     # Return an empty list if the text is empty or whitespace
     if not text or text.isspace():
-        return []
+        return [], 0
 
     # Tokenize the text
     tokens = tokenizer.encode(text, disallowed_special=())
 
     # Initialize an empty list of chunks
     chunks = []
-
+    tokens_per_chunk = []
+    
     # Use the provided chunk token size or the default one
     chunk_size = chunk_token_size or CHUNK_SIZE
 
@@ -82,7 +84,8 @@ def get_text_chunks(text: str, chunk_token_size: Optional[int]) -> List[str]:
         if len(chunk_text_to_append) > MIN_CHUNK_LENGTH_TO_EMBED:
             # Append the chunk text to the list of chunks
             chunks.append(chunk_text_to_append)
-
+            tokens_per_chunk.append(len(tokenizer.encode(chunk_text_to_append, disallowed_special=())))
+            
         # Remove the tokens corresponding to the chunk text from the remaining tokens
         tokens = tokens[len(tokenizer.encode(chunk_text, disallowed_special=())) :]
 
@@ -97,5 +100,6 @@ def get_text_chunks(text: str, chunk_token_size: Optional[int]) -> List[str]:
         remaining_text = tokenizer.decode(tokens).replace("\n", " ").strip()
         if len(remaining_text) > MIN_CHUNK_LENGTH_TO_EMBED:
             chunks.append(remaining_text)
-
-    return chunks
+            tokens_per_chunk.append(len(tokenizer.encode(remaining_text, disallowed_special=())))
+        
+    return chunks, tokens_per_chunk
