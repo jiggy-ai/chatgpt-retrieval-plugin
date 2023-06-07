@@ -21,6 +21,8 @@ class BasicDocumentMetadata(BaseModel):
     
     @validator("created_at")
     def validate_iso_date(cls, value):
+        if value is None or value == "":
+            return None
         try:
             datetime.fromisoformat(value)
             return value
