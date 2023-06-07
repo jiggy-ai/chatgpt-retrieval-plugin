@@ -4,7 +4,7 @@ from services.openai import get_chat_completion
 import json
 from typing import Dict
 from server.config import extract_metadata_config
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from typing import Optional
 from services.pydantic_completion import pydantic_completion
 from datetime import datetime
@@ -15,13 +15,19 @@ class BasicDocumentMetadata(BaseModel):
                                                   "then output a good title for the content based on the available info including the filename. ")
     author:     Optional[str] = Field(default=None, description="The author or entity that created the document content.")
 
-    created_at: Optional[datetime] = Field(default=None, format="%Y-%m-%d", 
-                                           description="The date in the ISO 8501 format (YYYY-MM-DD) that the content was published if it appears in the content.  " \
-                                                       "Can also be the copyright date.")        
-    #created_at: Optional[str] = Field(default=None, description="The date in the ISO 8501 format (YYYY-MM-DD) that the content was created if it appears in the content.  " \
-    #                                                            "Can also be the copyright date.")
+    created_at: Optional[str] = Field(default=None, description="The date in the ISO 8501 format (YYYY-MM-DD) that the content was created if it appears in the content.  " \
+                                                                "Can also be the copyright date.")
     language:   Optional[str] = Field(default="en", description="The 2 character ISO 639-1 language code of the primary language of the content.")
     
+    @validator("created_at")
+    def validate_iso_date(cls, value):
+        try:
+            datetime.fromisoformat(value)
+            return value
+        except ValueError as e:
+            logger.warning(e)
+            raise ValueError(f"created_at string must be in ISO format YYYY-MM-DD: {e}")
+
 
 def extract_metadata_from_document(text: str, filename : str = "unknown") -> Dict[str, str]:
     

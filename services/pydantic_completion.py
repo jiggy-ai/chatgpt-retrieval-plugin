@@ -7,7 +7,7 @@ It will retry the task with error messages if the model does not produce appropr
 
 """
 
-import logging
+from loguru import logger
 from pydantic import BaseModel, ValidationError
 from typing import List, Tuple
 import openai
@@ -29,7 +29,7 @@ def pydantic_completion(messages : List[dict], model_class: BaseModel, retry=3, 
         except Exception as e:
             last_exception = e
             error_msg = f"json.loads exception: {e}"
-            logging.error(error_msg)
+            logger.error(error_msg)
             messages.append(assistant_message)
             messages.append({"role"   : "system",
                             "content": error_msg})
@@ -39,7 +39,8 @@ def pydantic_completion(messages : List[dict], model_class: BaseModel, retry=3, 
         except ValidationError as e:
             last_exception = e
             error_msg = f"pydantic exception: {e}"
-            logging.error(error_msg)
+            logger.info(json_content)
+            logger.error(error_msg)
             messages.append(assistant_message)            
             messages.append({"role"   : "system",
                             "content": error_msg})    
