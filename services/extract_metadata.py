@@ -4,51 +4,50 @@ from services.openai import get_chat_completion
 import json
 from typing import Dict
 from server.config import extract_metadata_config
+from pydantic import BaseModel, Field
+from typing import Optional
+from services.pydantic_completion import pydantic_completion
+from datetime import datetime
 
-def extract_metadata_from_document(text: str) -> Dict[str, str]:
+class BasicDocumentMetadata(BaseModel):
+    title:      str           = Field(description="The title of the document content. " \
+                                                  "If there is no clear title specified in the content " \
+                                                  "then output a good title for the content based on the available info including the filename. ")
+    author:     Optional[str] = Field(default=None, description="The author or entity that created the document content.")
 
-    config = json.loads(extract_metadata_config.json())
-    model = config.pop("model")    
-    allowed_keys = {k for k, v in config.items() if v}
-    if not allowed_keys:
-        logger.info("No metadata extraction is enabled")
-        return {}  # no extraction is enabled
-
-    # add language to allowed keys
-    allowed_keys.add("language")
+    created_at: Optional[datetime] = Field(default=None, format="%Y-%m-%d", 
+                                           description="The date in the ISO 8501 format (YYYY-MM-DD) that the content was published if it appears in the content.  " \
+                                                       "Can also be the copyright date.")        
+    #created_at: Optional[str] = Field(default=None, description="The date in the ISO 8501 format (YYYY-MM-DD) that the content was created if it appears in the content.  " \
+    #                                                            "Can also be the copyright date.")
+    language:   Optional[str] = Field(default="en", description="The 2 character ISO 639-1 language code of the primary language of the content.")
     
-    sources = Source.__members__.keys()
-    sources_string = ", ".join(sources)
-    messages = [
-        {
-            "role": "system",
-            "content": f"""
-            Given the beginning of some content from a user, please extract the following metadata:
-            - title: string (or None if unknown) of the title of the content.  If no title is specified output a good short title for the content.            
-            - author: string (or None if unknown) of the author of the content.
-            - created_at: string (or None if unknown) The date in the format YYYY-MM-DD that the content was created if it appears in the content.  
-            - language: string, the 2 character ISO 639-1 language code of the primary language of the content.
-            Please respond with JSON output containing the extracted metadata in key value pairs. 
-            The keys for the metadata are "title", "author", "created_at", and "language".
-            If you don't find a metadata field, you don't need to include it.  Do not use "unknown", "not found" or similar as output values.
-            """,
-        },
-        {"role": "user", "content": text[:2048]},
-    ]
 
-    completion = get_chat_completion(messages, model=model)
+def extract_metadata_from_document(text: str, filename : str = "unknown") -> Dict[str, str]:
+    
 
-
+    #model = 'gpt-3.5-turbo'
+    model = "gpt-4"
+    initial_text = text[:2048]   + " <truncated>"  # use first 2048 characters of text
+    logger.info(f"Extracting metadata from document filename {filename} using model {model} and first 2048 characters of text")
+    logger.info(f"Initial text: {initial_text}")
+    
+    messages = [{"role":   "user",
+                "content": "Please extract the requested metadata from the following document content:"},
+                {"role":   "user",
+                "content": f"filename: {filename}"},
+                {"role":   "user",
+                "content": initial_text}]
     try:
-        metadata = json.loads(completion)
-        metadata = {key: value for key, value in metadata.items() if key in allowed_keys}
-        for k, v in metadata.items():
-            logger.info(f"Extracted metadata {k}={v}")
-        metadata = {k: v for k, v in metadata.items() if v}   # remove empty/None values
-    except:
-        metadata = {}
+        metadata = pydantic_completion(messages, BasicDocumentMetadata, model=model, retry=3)
+        logger.info(f"Extracted metadata: {metadata}")
+    except Exception as e:
+        metadata = BasicDocumentMetadata(language = 'en')
+    
+    return metadata.dict()
+        
 
-    return metadata
+
 
 
 

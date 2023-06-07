@@ -29,7 +29,7 @@ async def get_document_from_file(file: UploadFile) -> Document:
     extracted_text, mimetype = await extract_text_from_form_file(file)
 
     if mimetype not in excel_mimetypes + ['text/csv']:
-        extracted_metadata = extract_metadata_from_document(extracted_text)
+        extracted_metadata = extract_metadata_from_document(extracted_text, file.filename)
         logger.info(f"Extracted metadata: {extracted_metadata}")
     else:
         # tabular datafiles tend not to have visible metadata

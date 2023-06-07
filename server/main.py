@@ -121,7 +121,8 @@ async def upsert(
         for document in request.documents:
             # attempt to extract metadata if any of our 3 extracted metadata fields are missing
             if not {'created_at', 'title', 'author'}.issubset(document.metadata.dict(exclude_none=True)):
-                extracted_metadata = extract_metadata_from_document(document.text)
+                filename = document.metadata.source_id if document.metadata.source_id else "unknown"
+                extracted_metadata = extract_metadata_from_document(document.text, filename)
                 for k, v in extracted_metadata.items():
                     if k not in document.metadata.dict():  # don't overwrite existing metadata
                         logger.info(f"Adding metadata {k}={v}")
