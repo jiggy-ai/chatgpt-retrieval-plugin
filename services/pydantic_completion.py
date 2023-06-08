@@ -36,7 +36,7 @@ def pydantic_completion(messages : List[dict], model_class: BaseModel, retry=3, 
             continue
         try:
             return model_class(**json_content)
-        except ValidationError as e:
+        except Exception as e:
             last_exception = e
             error_msg = f"pydantic exception: {e}"
             logger.info(json_content)
