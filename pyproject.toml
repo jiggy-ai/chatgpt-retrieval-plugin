@@ -2,7 +2,7 @@
 name = "chatgpt-retrieval-plugin"
 version = "0.1.0"
 description = ""
-authors = ["isafulf <isabella@openai.com>"]
+authors = ["isafulf <isabella@openai.com>", "bk@jiggy.ai"]
 readme = "README.md"
 packages = [{include = "server"}]
 

@@ -21,7 +21,14 @@ def pydantic_completion(messages : List[dict], model_class: BaseModel, retry=3, 
 
     last_exception = None
     for i in range(retry+1):
-        response = openai.ChatCompletion.create(messages=messages, temperature=temperature, **kwargs)
+        try:
+            response = openai.ChatCompletion.create(messages=messages, temperature=temperature, **kwargs)
+        except Exception as e:
+            logger.warning(f"openai.ChatCompletion.create exception: {e}")
+            if i == retry:
+                raise e
+            continue
+            
         assistant_message= response['choices'][0]['message']
         content = assistant_message['content']
         try:

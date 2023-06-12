@@ -50,7 +50,8 @@ def extract_metadata_from_document(text: str, filename : str = "unknown") -> Dic
         metadata = pydantic_completion(messages, BasicDocumentMetadata, model=model, retry=3)
         logger.info(f"Extracted metadata: {metadata}")
     except Exception as e:
-        metadata = BasicDocumentMetadata(language = 'en')
+        logger.exception(e)
+        metadata = BasicDocumentMetadata(title='unknown', language = 'en')
     
     return metadata.dict()
         

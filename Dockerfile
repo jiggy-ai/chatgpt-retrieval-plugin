@@ -1,5 +1,5 @@
 
-FROM python:3.10 as requirements-stage
+FROM python:3.11 as requirements-stage
 
 WORKDIR /tmp
 
@@ -12,6 +12,7 @@ RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
 
 #FROM python:3.10
 #FROM bitnami/python:3.10-prod
+
 FROM  ubuntu:latest
 
 ARG DEBIAN_FRONTEND=noninteractive
