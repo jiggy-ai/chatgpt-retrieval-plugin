@@ -14,6 +14,14 @@ from services.extract_metadata import extract_metadata_from_document, csv_has_he
 import subprocess       
 import random
 import string
+from io import BytesIO 
+from pdfminer.high_level import extract_pages
+from pdfminer.layout import LTTextContainer
+import re
+
+
+
+
 
 
 excel_mimetypes = ["application/vnd.ms-excel",                                           # Excel 97-2003 Workbook (.xls)
@@ -119,13 +127,34 @@ text_mimetypes = ["text/plain",
                   "application/x-typescript-jsx",
                   "application/javascript"]
 
+
+def pdf_text(file):
+    """
+    extract text from the pdf_bytes using pdfminer.six and return it as a single string
+    """
+    text = ""
+    for page_layout in extract_pages(file):
+        for element in page_layout:
+            if isinstance(element, LTTextContainer):
+                for text_line in element:
+                    line = text_line.get_text().rstrip() + "\n"
+                    text += line
+    return re.sub(r'\n{3,}', '\n\n', text)
+
+
 def extract_text_from_file(file: BufferedReader, mimetype: str) -> str:
     
     if mimetype == "application/pdf":
-        # Extract text from pdf using PyPDF2
-        reader = PdfReader(file)
-        extracted_text = " ".join([page.extract_text() for page in reader.pages])
-        
+        try:
+            extracted_text = pdf_text(file)
+            logger.info("Extracted text from pdf using pdfminer.six")
+        except Exception as e:
+            logger.error('Failed to extract text from pdf using pdfminer.six ({e})')
+            # Extract text from pdf using PyPDF2
+            reader = PdfReader(file)
+            extracted_text = " ".join([page.extract_text() for page in reader.pages])
+            logger.info("Extracted text from pdf using PyPDF2")
+            
     elif mimetype in text_mimetypes:
         # Read text from plain text file
         extracted_text = file.read().decode("utf-8")
