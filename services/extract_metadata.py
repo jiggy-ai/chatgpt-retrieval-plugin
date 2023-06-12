@@ -11,8 +11,9 @@ from datetime import datetime
 
 class BasicDocumentMetadata(BaseModel):
     title:      str           = Field(description="The title of the document content. " \
+                                                  "This is a required field.  " \
                                                   "If there is no clear title specified in the content " \
-                                                  "then output a good title for the content based on the available info including the filename. ")
+                                                  "please output a good title for the content based on the available info including the filename. ")
     author:     Optional[str] = Field(default=None, description="The author or entity that created the document content.")
 
     created_at: Optional[str] = Field(default=None, description="The date in the ISO 8501 format (YYYY-MM-DD) that the content was created if it appears in the content.  " \
@@ -32,7 +33,6 @@ class BasicDocumentMetadata(BaseModel):
 
 
 def extract_metadata_from_document(text: str, filename : str = "unknown") -> Dict[str, str]:
-    
 
     #model = 'gpt-3.5-turbo'
     model = "gpt-4"
