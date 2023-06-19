@@ -33,7 +33,7 @@ excel_mimetypes = ["application/vnd.ms-excel",                                  
                    "application/vnd.ms-excel.addin.macroEnabled.12"]                     # Excel Add-In (.xlam)
 
 
-async def get_document_from_file(file: UploadFile) -> Document:
+async def get_document_from_file(file: UploadFile, id: str = None, metadata: Optional[DocumentMetadata] = None) -> Document:
     extracted_text, mimetype = await extract_text_from_form_file(file)
 
     if mimetype not in excel_mimetypes + ['text/csv']:
@@ -44,12 +44,25 @@ async def get_document_from_file(file: UploadFile) -> Document:
         extracted_metadata = {}        
         logger.info("No metadata extracted for excel or csv files")
 
-    metadata = DocumentMetadata(source    = Source.file, 
-                                source_id = file.filename, 
-                                **extracted_metadata)
+    if metadata:
+        # update metadata keys that are None using the extracted metadata
+        metadata_dict = metadata.dict()
+        for k, v in extracted_metadata.items():
+            if v and k in metadata_dict and metadata_dict[k] is None:
+                metadata.__setattr__(k, v)
+    else: 
+        metadata = DocumentMetadata(**extracted_metadata)                                     
+
+    # set source and source_id if not already set                                    
+    if metadata.source is None:
+        metadata.source = Source.file
+    if metadata.source_id is None:
+        metadata.source_id = file.filename
+        
     logger.info(metadata)
     doc = Document(text=extracted_text, metadata=metadata, mimetype=mimetype)
-    
+    if id:
+        doc.id = id
     return doc
 
 

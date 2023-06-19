@@ -1,5 +1,6 @@
 from models.models import (
     Document,
+    DocumentMetadata,
     DocumentMetadataFilter,
     Query,
     QueryResult,

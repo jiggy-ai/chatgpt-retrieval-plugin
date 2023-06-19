@@ -2,6 +2,8 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Union
 from enum import Enum
 import uuid
+import json 
+
 
 class Source(str, Enum):
     email = "email"
@@ -18,8 +20,20 @@ class DocumentMetadata(BaseModel):
     author: Union[str, List[str]] = None
     title: Optional[str] = None
     description: Optional[str] = None
-    language: Optional[str] = None
+    language: Optional[str] = Field(description="The 2 character ISO 639-1 language code of the primary language of the content.")
+    version: str = None
+    
+    @classmethod
+    def __get_validators__(cls):
+        yield cls.validate_to_json
 
+    @classmethod
+    def validate_to_json(cls, value):
+        if isinstance(value, str):
+            return cls(**json.loads(value))
+        return value
+
+    
 class DocumentChunkMetadata(DocumentMetadata):
     document_id: str
 

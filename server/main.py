@@ -23,7 +23,8 @@ from models.api import (
     UpsertResponse,
     DocumentChunk,
     Accounting,
-    DocChunksResponse
+    DocChunksResponse,
+    DocumentMetadata,
 )
 from datastore.factory import get_datastore
 from services.file import get_document_from_file
@@ -91,11 +92,13 @@ app.mount("/.well-known", StaticFiles(directory="/code/.well-known"), name="stat
 )
 async def upsert_file(
     file: UploadFile = File(...),
+    id: Optional[str] = Query(None),
+    metadata: Optional[DocumentMetadata] = Body(None),
 ):
     app.state.last_op = time()    
-    logger.info(f"Received file {file.filename}")
+    logger.info(f"Received file {file.filename} with metadata {metadata} id {id}")
     try:
-        document = await get_document_from_file(file)        
+        document = await get_document_from_file(file, id, metadata)
         ids = await datastore.upsert([document])        
         return UpsertResponse(ids=ids)
     except ValueError as e:
