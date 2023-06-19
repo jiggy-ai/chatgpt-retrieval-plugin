@@ -147,6 +147,8 @@ def extract_text_from_file(file: BufferedReader, mimetype: str) -> str:
     if mimetype == "application/pdf":
         try:
             extracted_text = pdf_text(file)
+            if not extracted_text or len(extracted_text.strip()) < 10:
+                raise Exception("pdfminer.six failed to extract useful text from pdf")
             logger.info("Extracted text from pdf using pdfminer.six")
         except Exception as e:
             logger.error('Failed to extract text from pdf using pdfminer.six ({e})')
