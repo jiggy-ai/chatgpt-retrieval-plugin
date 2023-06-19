@@ -151,7 +151,7 @@ def extract_text_from_file(file: BufferedReader, mimetype: str) -> str:
                 raise Exception("pdfminer.six failed to extract useful text from pdf")
             logger.info("Extracted text from pdf using pdfminer.six")
         except Exception as e:
-            logger.error('Failed to extract text from pdf using pdfminer.six ({e})')
+            logger.error(f'Failed to extract text from pdf using pdfminer.six ({e})')
             # Extract text from pdf using PyPDF2
             reader = PdfReader(file)
             extracted_text = " ".join([page.extract_text() for page in reader.pages])
