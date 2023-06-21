@@ -123,6 +123,9 @@ async def upsert(
     try:
         for document in request.documents:
             # attempt to extract metadata if any of our 3 extracted metadata fields are missing
+            logger.info(f"Document metadata: {document.metadata}")
+            # log type of document metadata
+            logger.info(f"Document metadata type: {type(document.metadata)}")
             if not {'created_at', 'title', 'author'}.issubset(document.metadata.dict(exclude_none=True)):
                 filename = document.metadata.source_id if document.metadata.source_id else "unknown"
                 extracted_metadata = extract_metadata_from_document(document.text, filename)
@@ -136,7 +139,7 @@ async def upsert(
         logger.error(e)
         raise HTTPException(status_code=400, detail=str(e))    
     except Exception as e:
-        logger.error(e)
+        logger.exception(e)
         raise HTTPException(status_code=500, detail="Internal Service Error")
 
 
