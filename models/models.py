@@ -22,15 +22,17 @@ class DocumentMetadata(BaseModel):
     description: Optional[str] = None
     language: Optional[str] = Field(description="The 2 character ISO 639-1 language code of the primary language of the content.")
     version: str = None
-    
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate_to_json
 
     @classmethod
-    def validate_to_json(cls, value):
+    def __get_validators__(cls):
+        yield cls.custom_validate
+
+    @classmethod
+    def custom_validate(cls, value):
         if isinstance(value, str):
             return cls(**json.loads(value))
+        if isinstance(value, dict):
+            return cls(**value)
         return value
 
     
