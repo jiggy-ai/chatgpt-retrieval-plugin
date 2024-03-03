@@ -165,15 +165,35 @@ async def query_main(
         logger.error("Error:", e)
         raise HTTPException(status_code=500, detail="Internal Service Error")
 
-
+# XXX deprecated due to issues with supporting arbitrary strings (like URLS) as a docid (even when URL encoded)
 @app.get(
     "/docs/{doc_id}",
     response_model=list[DocumentChunk],
     dependencies=[Depends(validate_subscriber_token)],        
 )
-async def docs(doc_id: str = Path(..., description="The document ID to get" )):
+async def get_docs_with_path_id(doc_id: str = Path(..., description="The document ID to get" )):
     app.state.last_op = time()        
     logger.info(doc_id)
+ 
+    try:
+        results = await datastore.doc(doc_id)
+        return results
+    except ValueError as e:
+        logger.error(e)
+        raise HTTPException(status_code=400, detail=str(e))        
+    except Exception as e:
+        logger.error("Error:", e)
+        raise HTTPException(status_code=500, detail="Internal Service Error")
+
+@app.get(
+    "/documents",
+    response_model=list[DocumentChunk],
+    dependencies=[Depends(validate_subscriber_token)],        
+)
+async def get_docs_with_query_id(doc_id: str = Query(..., description="The document ID to get")):
+    app.state.last_op = time()        
+    logger.info(doc_id)
+    #unquote_doc_id = unquote_plus(doc_id)        
     try:
         results = await datastore.doc(doc_id)
         return results
