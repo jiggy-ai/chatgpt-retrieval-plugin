@@ -18,6 +18,8 @@ ENV CXXFLAGS="${CFLAGS}"
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install -y build-essential wget curl unzip libffi-dev libssl-dev zlib1g-dev \
     libbz2-dev libreadline-dev libsqlite3-dev libncurses5-dev libncursesw5-dev \
+    tesseract-ocr poppler-utils \
+    tesseract-ocr-por tesseract-ocr-deu tesseract-ocr-fra tesseract-ocr-spa tesseract-ocr-chi-sim tesseract-ocr-chi-tra tesseract-ocr-rus tesseract-ocr-ara tesseract-ocr-hin \
     xz-utils tk-dev liblzma-dev python3-openssl git libreoffice g++ ca-certificates --no-install-recommends
     
 

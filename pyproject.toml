@@ -33,6 +33,9 @@ jiggybase = "^0.0.35"
 pysbd = "^0.3.4"
 pycryptodome = "^3.18.0"
 pdfminer-six = "^20221105"
+pdf2image = "^1.17.0"
+pytesseract = "^0.3.10"
+pillow = "^10.3.0"
 
 [tool.poetry.scripts]
 start = "server.main:start"
