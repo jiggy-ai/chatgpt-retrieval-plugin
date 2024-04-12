@@ -35,7 +35,7 @@ class BasicDocumentMetadata(BaseModel):
 def extract_metadata_from_document(text: str, filename : str = "unknown") -> Dict[str, str]:
 
     #model = 'gpt-3.5-turbo'
-    model = "gpt-4"
+    model = "gpt-4-turbo-2024-04-09"
     initial_text = text[:2048]   + " <truncated>"  # use first 2048 characters of text
     logger.info(f"Extracting metadata from document filename {filename} using model {model} and first 2048 characters of text")
     logger.info(f"Initial text: {initial_text}")
